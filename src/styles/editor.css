@@ -1,0 +1,141 @@
+/* ============================================
+   Code Editor Styles
+   ============================================ */
+
+.code-editor-container {
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.code-editor-container .cm-editor {
+  height: 240px;
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+}
+
+.code-editor-container .cm-editor .cm-scroller {
+  overflow: auto;
+}
+
+.code-editor-container .cm-editor.cm-focused {
+  outline: none;
+}
+
+.code-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-primary);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.code-editor-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-editor-toggle {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+.code-editor-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* --- Zoom controls (visible only in fullscreen) --- */
+.code-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.code-zoom[hidden] {
+  display: none !important;
+}
+
+.code-zoom-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-mono);
+}
+
+.code-zoom-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+}
+
+.code-zoom-label {
+  min-width: 44px;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+.code-zoom-label:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* --- Fullscreen --- */
+.code-editor-container--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  border: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-editor-container--fullscreen .code-editor-header {
+  flex-shrink: 0;
+  padding: 14px 20px;
+}
+
+.code-editor-container--fullscreen .code-editor-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Fullscreen overrides the drawer accordion collapse state */
+.code-editor-container--fullscreen .collapse-body {
+  display: block !important;
+}
+
+.code-editor-container--fullscreen .cm-editor {
+  height: 100%;
+  /* Zoom applies only in fullscreen */
+  font-size: calc(var(--text-sm) * var(--code-zoom, 1));
+}

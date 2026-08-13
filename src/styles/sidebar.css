@@ -1,0 +1,113 @@
+/* ============================================
+   Sidebar — Vertical Primary Tabs
+   ============================================ */
+
+.sidebar {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-primary);
+  padding: 16px 0;
+  z-index: var(--z-sidebar);
+  gap: 4px;
+}
+
+.sidebar-tab {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 20px 10px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all var(--transition-fast);
+  letter-spacing: 0.05em;
+  user-select: none;
+  position: relative;
+}
+
+.sidebar-tab:hover:not(.sidebar-tab--disabled) {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.sidebar-tab--active {
+  color: var(--text-accent);
+  background: var(--accent-glow);
+}
+
+.sidebar-tab--disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sidebar-tab--disabled::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(-100% - 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  writing-mode: horizontal-tb;
+  border: 1px solid var(--border-secondary);
+  z-index: var(--z-tooltip);
+}
+
+.sidebar-tab--disabled:hover::after {
+  opacity: 1;
+}
+
+/* --- Bottom utility buttons (help guide + theme toggle) --- */
+.sidebar-theme,
+.sidebar-help {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+/* Push the whole pair to the bottom; the help button sits above the toggle */
+.sidebar-help {
+  margin-top: auto;
+}
+
+.sidebar-theme:hover,
+.sidebar-help:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.sidebar-help--active {
+  color: var(--text-accent);
+  background: var(--accent-glow);
+}
+
+/* "跟随系统" shows a ☀️/🌙 pair — shrink so it fits the 40px button */
+.sidebar-theme--system {
+  font-size: 13px;
+  white-space: nowrap;
+}
