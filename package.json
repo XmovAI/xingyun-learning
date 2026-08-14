@@ -1,7 +1,7 @@
 {
   "name": "xingyun-learning",
   "version": "1.0.0",
-  "description": "魔法星云 SDK 教学项目",
+  "description": "魔珐星云 SDK 教学项目",
   "type": "module",
   "scripts": {
     "dev": "vite",

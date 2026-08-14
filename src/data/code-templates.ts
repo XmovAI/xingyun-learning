@@ -86,7 +86,7 @@ avatar.speak('你好，我是你的数字人助手！');`,
   speakSSML: `// SSML 播报
 avatar.speak(\`
 <speak>
-  大家好，欢迎来到魔法星云！
+  大家好，欢迎来到魔珐星云！
   <break time="500ms"/>
   今天为大家展示数字人的播报能力。
 </speak>
@@ -297,7 +297,7 @@ const resp = await fetch(BASE_URL + '/chat/completions', {
   body: JSON.stringify({
     model: MODEL_ID,
     messages: [
-      { role: 'system', content: '你是魔法星云的数字人助手，请用简短友好的语气回复，30字以内。' },
+      { role: 'system', content: '你是魔珐星云的数字人助手，请用简短友好的语气回复，30字以内。' },
       { role: 'user', content: userInput },
     ],
   }),
@@ -431,7 +431,7 @@ const resp = await fetch(BASE_URL + '/chat/completions', {
   body: JSON.stringify({
     model: MODEL_ID,
     messages: [
-      { role: 'system', content: '你是魔法星云的数字人助手，请用简短友好的语气回复，30字以内。' },
+      { role: 'system', content: '你是魔珐星云的数字人助手，请用简短友好的语气回复，30字以内。' },
       { role: 'user', content: recognizedText },
     ],
   }),

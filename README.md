@@ -116,7 +116,7 @@ xingyun-learning/
 
 | 平台 | 用途 | 获取地址 |
 |------|------|----------|
-| [魔法星云](https://xingyun3d.com/) | 数字人 App ID / Secret | 平台控制台 |
+| [魔珐星云](https://xingyun3d.com/) | 数字人 App ID / Secret | 平台控制台 |
 | [火山方舟 ARK](https://console.volcengine.com/ark) | 大模型 API Key | API Key 管理 |
 | [腾讯云语音识别](https://console.cloud.tencent.com/asr) | ASR SecretId / SecretKey | 访问管理 CAM |
 
