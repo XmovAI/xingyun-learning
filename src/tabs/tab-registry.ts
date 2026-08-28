@@ -913,7 +913,10 @@ Content-Type: application/json
 4. SDK 返回识别文本 → 交给大模型 → 数字人播报
 `,
 
-  usage: `## 使用说明
+  usage: `
+<button type="button" class="action-btn action-btn--primary" data-guide-replay>重看教学引导</button>
+
+## 使用说明
 
 本教学系统用于动手体验「魔珐星云」具身智能 SDK：在左侧边栏选择功能模块，在代码编辑框修改代码，点击「执行」按钮运行，结果与日志显示在下方日志面板。
 

@@ -96,10 +96,19 @@ export function createAvatarPanel(): HTMLElement {
     }
   });
 
-  // Re-apply aspect ratio when the panel resizes
-  window.addEventListener('resize', () => {
+  // Re-apply aspect ratio whenever the panel resizes. A ResizeObserver covers
+  // window resizes and orientation changes (a plain window-resize listener
+  // misses failure modes like embedded-webview panes), and only fires on
+  // actual size changes.
+  const reapplyAspect = () => {
     if (currentAspectRatio) applyAvatarAspectRatio(currentAspectRatio);
-  });
+  };
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(reapplyAspect);
+    ro.observe(panel);
+  } else {
+    window.addEventListener('resize', reapplyAspect);
+  }
 
   // Apply default 16:9 landscape on startup (panel is laid out by the
   // time the rAF callback runs, so clientWidth/Height are valid).

@@ -6,11 +6,14 @@ import './styles/main.css';
 import './styles/sidebar.css';
 import './styles/editor.css';
 import './styles/components.css';
+import './styles/mobile.css';
+import './styles/guide.css';
 
 import { store } from './state/app-state';
 import { createAvatarPanel } from './components/avatar-panel';
 import { createSidebar } from './components/sidebar';
 import { createDrawer, renderDrawerContent } from './components/drawer';
+import { maybeShowGuide } from './components/guide-tour';
 import { applyTheme, transitionTheme, resolveTheme } from './core/theme';
 import type { ThemeName } from './core/theme';
 import { TAB_DEFINITIONS } from './tabs/tab-registry';
@@ -78,7 +81,7 @@ function init() {
       overlayEl.classList.toggle('overlay--visible', state.drawerOpen);
     }
 
-    // Render drawer content when tab changes
+// Render drawer content when tab changes
     if (
       state.drawerOpen &&
       (state.activePrimaryTab !== lastPrimary || state.activeSecondaryTab !== lastSecondary)
@@ -103,6 +106,9 @@ function init() {
       }
     }
   });
+
+  // First-visit onboarding tour (persisted marker prevents re-showing)
+  maybeShowGuide();
 }
 
 // Wait for DOM

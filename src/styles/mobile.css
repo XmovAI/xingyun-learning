@@ -1,0 +1,202 @@
+/* ============================================
+   Mobile Styles — Responsive overrides for
+   small screens (≤ 768px). Imported last so
+   these win over the base stylesheets; the
+   desktop layout is untouched by the base rules.
+   ============================================ */
+
+@media (max-width: 768px) {
+  /* --- Mobile-specific size tokens --- */
+  :root {
+    /* Bottom-nav height incl. home-indicator safe area */
+    --nav-height: calc(64px + env(safe-area-inset-bottom));
+    /* Bottom-sheet height: most of the viewport, capped for tablets */
+    --sheet-height: min(68vh, 600px);
+  }
+
+  /* --- Touch targets + input zoom prevention (global) --- */
+  button, select, input, label {
+    touch-action: manipulation;
+  }
+
+  /* --- Shell: single column, avatar above the bottom nav --- */
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+    /* 100dvh tracks the dynamic mobile viewport (URL bar collapse) */
+    height: 100%;
+    height: 100dvh;
+  }
+  .main-area {
+    grid-column: 1;
+    grid-row: 1;
+    /* Keep the avatar clear of the top notch */
+    padding-top: env(safe-area-inset-top);
+  }
+  /* Center the avatar canvas horizontally (base left-aligns it) */
+  .avatar-panel {
+    align-items: center;
+  }
+
+  /* --- Bottom navigation (was the right vertical rail) --- */
+  .sidebar {
+    grid-column: 1;
+    grid-row: 2;
+    flex-direction: row;
+    align-items: stretch;
+    height: var(--nav-height);
+    padding: 0;
+    gap: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-left: none;
+    border-top: 1px solid var(--border-primary);
+  }
+  .sidebar-tab {
+    writing-mode: horizontal-tb;
+    text-orientation: initial;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 4px;
+    font-size: var(--text-xs);
+    border-radius: 0;
+    letter-spacing: 0;
+  }
+  /* Disabled-tab tooltip pops above the tab instead of beside it */
+  .sidebar-tab--disabled::after {
+    left: 50%;
+    top: auto;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
+  }
+  /* Help & theme: 44px squares pushed to the right end */
+  .sidebar-help,
+  .sidebar-theme {
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    border: none;
+    border-left: 1px solid var(--border-primary);
+    border-radius: 0;
+    align-self: center;
+  }
+  .sidebar-help {
+    margin-left: auto;
+  }
+
+  /* --- Bottom sheet (was the right 560px panel) ---
+     Fixed overlay stacked above the nav: it floats over the avatar canvas
+     without resizing it — the canvas keeps its size whether the sheet is
+     open or closed. Z-index (--z-drawer > SDK canvas) keeps it on top. */
+  .drawer {
+    position: fixed;
+    top: auto;
+    bottom: var(--nav-height);
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: var(--sheet-height);
+    border-left: none;
+    border-top: 1px solid var(--border-primary);
+    border-radius: 16px 16px 0 0;
+    /* Hidden below the viewport (shifted down by its own height + nav) */
+    transform: translateY(calc(100% + var(--nav-height)));
+  }
+  .drawer--open {
+    transform: translateY(0);
+  }
+
+  /* --- Sheet internals: tappable header/tabs, tighter content --- */
+  .drawer-header {
+    min-height: 48px;
+    padding: 12px 16px;
+  }
+  .drawer-close {
+    width: 40px;
+    height: 40px;
+  }
+  .secondary-tabs {
+    padding: 0 8px;
+  }
+  .secondary-tab {
+    min-height: 44px;
+    padding: 12px 14px;
+  }
+  .drawer-content {
+    padding: 14px;
+    gap: 14px;
+    overscroll-behavior-y: contain;
+  }
+
+  /* --- Action buttons / selects --- */
+  .action-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px;
+  }
+  .action-select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    font-size: var(--text-base); /* 16px: no iOS zoom on focus */
+  }
+
+  /* --- Forms: stacked rows, big inputs --- */
+  .form-field input,
+  .form-field select {
+    min-height: 44px;
+    font-size: var(--text-base);
+  }
+  .config-field-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .config-field-label {
+    flex: 0 0 auto;
+    text-align: left;
+  }
+  .config-field-input,
+  .config-field-select {
+    min-height: 44px;
+    font-size: var(--text-base);
+  }
+  .config-actions .action-btn {
+    flex: 1;
+  }
+
+  /* --- Panel headers wrap so inner controls stay tappable --- */
+  .log-panel-header,
+  .docs-panel-header,
+  .code-editor-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .log-panel-search {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    min-height: 36px;
+  }
+  .log-panel-clear,
+  .log-panel-toggle,
+  .docs-panel-toggle,
+  .code-editor-toggle {
+    min-height: 40px;
+  }
+
+  /* --- Compact embedded editor/log so the sheet scrolls less --- */
+  /* :not() keeps the fullscreen editor filling the viewport */
+  .code-editor-container:not(.code-editor-container--fullscreen) .cm-editor {
+    height: 180px;
+  }
+  .log-panel {
+    max-height: 160px;
+  }
+
+  .avatar-loading-bar {
+    width: min(200px, 60vw);
+  }
+}

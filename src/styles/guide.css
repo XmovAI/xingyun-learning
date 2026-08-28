@@ -1,0 +1,170 @@
+/* ============================================
+   Guide Tour — First-visit onboarding overlay
+   ============================================ */
+
+/* Above sidebar (100), drawer (120), tooltips (200) and fullscreen panels (300)
+   so the tour always sits on top of everything else. */
+.guide-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  font-family: var(--font-sans);
+}
+
+.guide-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Dims everything outside the highlighted region with an oversized ring
+   shadow; the element itself stays transparent so the target shows through. */
+.guide-spotlight {
+  position: absolute;
+  border: 2px solid var(--accent-primary);
+  border-radius: 12px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55);
+  transition:
+    left 240ms ease,
+    top 240ms ease,
+    width 240ms ease,
+    height 240ms ease,
+    border-radius 240ms ease;
+  pointer-events: none;
+}
+
+.guide-card {
+  position: fixed;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-secondary);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guide-card.guide-pop {
+  animation: guide-pop 240ms ease;
+}
+
+@keyframes guide-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.guide-card-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.guide-card-body {
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.guide-card-note {
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--text-muted);
+  border-left: 2px solid var(--border-secondary);
+  padding-left: 10px;
+}
+
+.guide-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.guide-dots {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  gap: 5px;
+}
+
+.guide-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-secondary);
+  transition: background var(--transition-fast);
+}
+
+.guide-dot--active {
+  background: var(--accent-primary);
+}
+
+.guide-btn {
+  padding: 7px 14px;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.guide-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.guide-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.guide-btn--primary {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.guide-btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+
+/* Hidden via visibility (not display) so the footer keeps its layout stable */
+.guide-prev {
+  visibility: hidden;
+}
+
+/* --- Mobile (bottom-nav layout) --- */
+@media (max-width: 768px) {
+  .guide-card {
+    padding: 16px;
+    gap: 8px;
+  }
+
+  .guide-card-title {
+    font-size: var(--text-base);
+  }
+
+  .guide-footer {
+    flex-wrap: wrap;
+  }
+
+  .guide-btn {
+    padding: 8px 12px;
+    min-height: 36px;
+  }
+}

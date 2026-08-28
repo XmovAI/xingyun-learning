@@ -6,6 +6,7 @@ import { marked } from 'marked';
 import { store } from '../state/app-state';
 import { makeCollapsible } from './collapsible';
 import { createFullscreenController } from './fullscreen';
+import { replayGuide } from './guide-tour';
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
@@ -54,6 +55,16 @@ export function createDocsPanel(
   body.querySelectorAll('a').forEach((a) => {
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
+  });
+
+  // Buttons embedded in docs content that relaunch the onboarding tour (e.g.
+  // the "重放教学浮层" button in the help tab). Close the drawer first so the
+  // tour spotlights the same regions as the first-visit experience.
+  body.querySelectorAll<HTMLElement>('[data-guide-replay]').forEach((el) => {
+    el.addEventListener('click', () => {
+      store.set({ drawerOpen: false });
+      replayGuide();
+    });
   });
 
   // Copy buttons on code blocks
