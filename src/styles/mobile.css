@@ -66,7 +66,7 @@
     letter-spacing: 0;
   }
   /* Disabled-tab tooltip pops above the tab instead of beside it */
-  .sidebar-tab--disabled::after {
+  .sidebar-tab--disabled:not(.sidebar-tab--active)::after {
     left: 50%;
     top: auto;
     bottom: calc(100% + 8px);

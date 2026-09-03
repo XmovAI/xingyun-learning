@@ -24,6 +24,7 @@
   --accent-glow: rgba(59, 130, 246, 0.15);
   --success: #22c55e;
   --warning: #f59e0b;
+  --warning-hover: #d97706;
   --error: #ef4444;
 
   /* End color of the avatar panel gradient (dark) */
@@ -77,6 +78,7 @@
   --accent-primary: #3b82f6;
   --accent-hover: #2563eb;
   --accent-glow: rgba(59, 130, 246, 0.12);
+  --warning-hover: #d97706;
 
   --panel-gradient-end: #dbe4f0;
 }

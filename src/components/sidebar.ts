@@ -6,6 +6,13 @@ import { store } from '../state/app-state';
 import { cycleThemeMode } from '../core/theme';
 import type { PrimaryTab, PrimaryTabId, ThemeMode } from '../types';
 
+/** A tab is blocked when it requires a connection/config that isn't ready yet. */
+function isTabBlocked(tab: PrimaryTab): boolean {
+  if (tab.requiresConnection && !store.get().sdkConnected) return true;
+  if (tab.requiresConfig && !store.hasInitConfig()) return true;
+  return false;
+}
+
 export function createSidebar(tabs: PrimaryTab[]): HTMLElement {
   const sidebar = document.createElement('div');
   sidebar.className = 'sidebar';
@@ -21,11 +28,13 @@ export function createSidebar(tabs: PrimaryTab[]): HTMLElement {
     if (tab.requiresConnection) {
       btn.classList.add('sidebar-tab--disabled');
       btn.dataset.tooltip = '需先创建连接';
+    } else if (tab.requiresConfig && !store.hasInitConfig()) {
+      btn.classList.add('sidebar-tab--disabled');
+      btn.dataset.tooltip = '需先在「初始化」配置 AppId / AppSecret';
     }
 
     btn.addEventListener('click', () => {
-      const state = store.get();
-      if (tab.requiresConnection && !state.sdkConnected) return;
+      if (isTabBlocked(tab)) return;
 
       store.navigateTab(tab.id, tab.secondaryTabs[0]?.id || '');
     });
@@ -88,17 +97,26 @@ export function createSidebar(tabs: PrimaryTab[]): HTMLElement {
       const tab = tabs.find(t => t.id === tabId);
       if (!tab) return;
 
-      // Update active state
+      // Update active state — 抽屉打开时才高亮当前 tab（首屏关闭抽屉时不高亮）
       btn.classList.toggle('sidebar-tab--active', state.activePrimaryTab === tabId && state.drawerOpen);
 
-      // Update disabled state for connection-required tabs
-      if (tab.requiresConnection) {
-        const disabled = !state.sdkConnected;
-        btn.classList.toggle('sidebar-tab--disabled', disabled);
+      // Update disabled state for connection/config-required tabs
+      // 注意：两个条件都必须显式收敛成布尔值——否则（如 init 的
+      // requiresConnection=false + requiresConfig=undefined）`false || undefined`
+      // 会得到 undefined，而 classList.toggle(name, undefined) 是「翻转」语义，
+      // 会造成禁用态反复横跳。
+      const blockedConn = !!(tab.requiresConnection && !state.sdkConnected);
+      const blockedConfig = !!(tab.requiresConfig && !store.hasInitConfig());
+      const blocked = blockedConn || blockedConfig;
+      btn.classList.toggle('sidebar-tab--disabled', blocked);
+      if (blocked) {
+        btn.dataset.tooltip = blockedConn ? '需先创建连接' : '需先在「初始化」配置 AppId / AppSecret';
+      } else {
+        delete btn.dataset.tooltip;
       }
     });
 
-    // Update help button active state
+    // Update help button active state（同主 tab：抽屉打开时才高亮）
     helpBtn.classList.toggle('sidebar-help--active', state.activePrimaryTab === 'help' && state.drawerOpen);
 
     updateThemeIcon();

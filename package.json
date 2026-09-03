@@ -15,13 +15,8 @@
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.0",
     "@codemirror/theme-one-dark": "^6.1.0",
+    "@xmov/avatar": "2.0.1",
     "codemirror": "^6.0.0",
-    "marked": "^16.0.0",
-    "tencentcloud-speech-sdk-js": "^1.0.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
+    "marked": "^16.0.0"
   }
 }

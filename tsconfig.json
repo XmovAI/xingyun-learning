@@ -15,7 +15,8 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@xmov/avatar/agent": ["./src/types/xingyun-avatar-agent.d.ts"]
     }
   },
   "include": ["src"]

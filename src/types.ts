@@ -5,33 +5,13 @@
 // --- SDK Global Declaration ---
 declare global {
   interface Window {
-    XmovAvatar: new (options: any) => any;
+    XingyunAvatarAgent: new (options: any) => any;
   }
 }
 
 export {};
 
 // --- App State ---
-
-export interface AgentConfig {
-  /** LLM API 地址（如火山方舟 https://ark.cn-beijing.volces.com/api/v3） */
-  baseUrl: string;
-  /** API Key（Authorization: Bearer） */
-  apiKey: string;
-  /** 模型 ID（如 doubao-seed-2-0-lite-260428） */
-  modelId: string;
-  /** 腾讯云 SecretId（实时语音识别 HMAC-SHA1 签名用） */
-  asrSecretId: string;
-  /** 腾讯云 SecretKey（实时语音识别 HMAC-SHA1 签名用） */
-  asrSecretKey: string;
-  /** 腾讯云 AppId（实时语音识别用） */
-  asrAppId: string;
-  /** ASR 引擎模型（如 16k_zh） */
-  asrEngineModel: string;
-}
-
-/** Keys of AgentConfig — used for placeholder injection */
-export type AgentConfigKey = keyof AgentConfig;
 
 /** Theme mode: fixed light/dark, or 'system' to follow the OS preference */
 export type ThemeMode = 'dark' | 'light' | 'system';
@@ -47,6 +27,8 @@ export interface AppState {
   sdkConnected: boolean;
   sdkStatus: string;
   avatar: any | null;
+  /** Whether the 智能体Demo preview iframe is currently shown */
+  demoPreviewActive: boolean;
   activePrimaryTab: PrimaryTabId;
   activeSecondaryTab: string;
   drawerOpen: boolean;
@@ -58,10 +40,9 @@ export interface AppState {
   zoom: number;
   tabStates: Record<string, TabState>;
   logEntries: LogEntry[];
-  agentConfig: AgentConfig;
 }
 
-export type PrimaryTabId = 'init' | 'interaction' | 'agent' | 'help';
+export type PrimaryTabId = 'init' | 'interaction' | 'agent' | 'agent-demo' | 'help';
 
 export interface TabState {
   code: string;
@@ -80,6 +61,8 @@ export interface PrimaryTab {
   id: PrimaryTabId;
   label: string;
   requiresConnection: boolean;
+  /** If set, the tab greys out and is not clickable until init config is saved */
+  requiresConfig?: boolean;
   secondaryTabs: SecondaryTab[];
   /** Tabs not shown in the sidebar (e.g. the help drawer reached via its own button) */
   hidden?: boolean;
@@ -88,10 +71,12 @@ export interface PrimaryTab {
 export interface SecondaryTab {
   id: string;
   label: string;
+  /** If set, the secondary tab greys out and is not clickable until connected */
+  requiresConnection?: boolean;
   modules: TabModule[];
 }
 
-export type TabModuleType = 'code' | 'actions' | 'log' | 'docs' | 'config' | 'init-config';
+export type TabModuleType = 'code' | 'actions' | 'log' | 'docs' | 'init-config';
 
 export interface TabModule {
   type: TabModuleType;

@@ -28,7 +28,12 @@ export function createActionBar(buttons: ActionButton[], tabModuleId: string): H
 
       // Restore previously-applied aspect ratio so the select reflects
       // the actual rendering state after the drawer is re-rendered.
-      const currentRatio = getCurrentAspectRatio();
+      // 优先读代码里容器 div 的 data-ratio（demo 横竖屏以代码为准）；
+      // 否则回退到主画布比例（初始化「画幅」下拉）。
+      // 锚定 div 标签：兼容历史快照里 CSS 选择器也可能含 data-ratio，避免误读。
+      let currentRatio = getEditorCode(tabModuleId)
+        .match(/<div id="avatar-container"[^>]*data-ratio="(\d+\/\d+)"/)?.[1] ?? null;
+      if (!currentRatio) currentRatio = getCurrentAspectRatio();
       if (currentRatio && btn.options.some((o) => o.value === currentRatio)) {
         select.value = currentRatio;
       }
@@ -45,8 +50,13 @@ export function createActionBar(buttons: ActionButton[], tabModuleId: string): H
     } else {
       const button = document.createElement('button');
       button.className = 'action-btn';
-      if (btn.id === 'execute') {
+      // 主操作（执行 / 重新加载 / Demo 预览）使用 primary 配色
+      if (btn.id === 'execute' || btn.id === 'reload' || btn.id === 'demo-preview') {
         button.classList.add('action-btn--primary');
+      }
+      // Demo 导出使用琥珀警示色，与主操作/普通操作区分
+      if (btn.id === 'demo-export') {
+        button.classList.add('action-btn--warning');
       }
       button.textContent = btn.label;
       button.addEventListener('click', () => {

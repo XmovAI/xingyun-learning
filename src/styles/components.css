@@ -81,21 +81,62 @@
 .avatar-loading-bar {
   width: 200px;
   height: 4px;
-  background: var(--bg-tertiary);
+  background: rgba(255, 255, 255, 0.22);
   border-radius: 2px;
   overflow: hidden;
 }
 
 .avatar-loading-bar-fill {
   height: 100%;
-  background: var(--accent-primary);
+  background: #60a5fa;
   border-radius: 2px;
   transition: width var(--transition-fast);
 }
 
 .avatar-loading-text {
   font-size: var(--text-sm);
-  color: var(--text-secondary);
+  color: #e2e8f0;
+}
+
+/* --- Connect hint — centered CTA shown while disconnected --- */
+.avatar-connect-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  pointer-events: none; /* let the status badge / canvas through; only the button is clickable */
+}
+
+.avatar-connect-hint-btn {
+  pointer-events: auto;
+  padding: 10px 22px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: #fff;
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-fast);
+}
+
+.avatar-connect-hint-btn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+/* --- Demo preview — iframe hosting the standalone 智能体Demo HTML --- */
+.demo-preview-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #0b1220;
+  z-index: 6; /* 盖过 loading(5) / 引导提示(6)，位于状态徽标(10)之下 */
 }
 
 /* --- Overlay (when drawer is open) --- */
@@ -196,6 +237,14 @@
 .secondary-tab:hover {
   color: var(--text-primary);
   background: var(--bg-hover);
+}
+
+.secondary-tab--disabled,
+.secondary-tab--disabled:hover {
+  color: var(--text-muted);
+  background: transparent;
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .secondary-tab--active {
@@ -302,6 +351,17 @@
 
 .action-btn--primary:hover {
   background: var(--accent-hover);
+}
+
+/* 琥珀警示色：用于「导出」等需与主操作区分、语义略特殊但有正面意义的动作 */
+.action-btn--warning {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: white;
+}
+
+.action-btn--warning:hover {
+  background: var(--warning-hover);
 }
 
 .action-select {
@@ -579,6 +639,16 @@
   text-decoration: underline;
 }
 
+/* Inline images in docs (e.g. the 前置准备 architecture diagram) */
+.docs-panel-body img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-secondary);
+}
+
 .docs-panel-body ul, .docs-panel-body ol {
   padding-left: 20px;
   margin-bottom: 8px;
@@ -750,4 +820,42 @@
 .config-actions {
   display: flex;
   gap: 8px;
+}
+.config-panel-tip {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 1px dashed var(--border-secondary);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+/* Stacked rows for full-width JSON textareas (label above the field) */
+.config-field-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.config-field-row--stack .config-field-label {
+  flex: none;
+  text-align: left;
+}
+.config-field-textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 90px;
+}
+.config-field-textarea:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -1px;
+  border-color: var(--accent-primary);
 }

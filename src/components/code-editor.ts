@@ -17,6 +17,15 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
 const ZOOM_STEP = 0.25;
 
+/**
+ * Demo 示例代码的结构签名：容器 div 上必须有内联 --rw/--rh 比例变量，
+ * 且 data-ratio 只允许出现在这一处（旧版模板把 data-ratio 也写进了
+ * CSS 选择器，曾在字符串中先于 div 被正则命中）。
+ * 若持久化的旧快照缺失该签名，说明结构与当前模板不一致，加载时直接用
+ * 当前模板覆盖，避免残留的 CSS 选择器让「横竖屏」下拉默认值错乱。
+ */
+const DEMO_CONTAINER_SIG = /<div id="avatar-container"[^>]*style="--rw:\s*\d+;\s*--rh:\s*\d+;">/;
+
 // Light CodeMirror chrome; syntax tokens come from basicSetup's default
 // highlight style (light-tuned). Dark mode uses `oneDark` instead.
 const lightTheme = EditorView.theme({
@@ -157,7 +166,12 @@ export function createCodeEditor(tabModuleId: string, defaultCode: string): HTML
   // Initialize CodeMirror after DOM attachment
   requestAnimationFrame(() => {
     const state = store.getTabState(tabModuleId);
-    const initialCode = state.code || defaultCode;
+    // Demo 模板升级后，旧快照结构与当前模板不一致时以当前模板为准
+    const persisted = state.code || '';
+    const isCurrentTemplate = DEMO_CONTAINER_SIG.test(defaultCode);
+    const source = isCurrentTemplate && !DEMO_CONTAINER_SIG.test(persisted) ? defaultCode : (persisted || defaultCode);
+    // 展示层把 {{gatewayServer}} 同步为表单当前值（appId/appSecret 保持占位符）
+    const initialCode = store.resolveGatewayDisplay(source);
 
     const view = new EditorView({
       doc: initialCode,
@@ -182,6 +196,20 @@ export function setEditorCode(tabModuleId: string, code: string) {
       to: view.state.doc.length,
       insert: code,
     },
+  });
+}
+
+/**
+ * 表单保存/清空后调用：把所有已挂载编辑器里的 {{gatewayServer}} 就地更新为当前值，
+ * 并在没有占位符时（旧字面量）也同步成最新网关，保证「创建实例」代码实时跟随表单。
+ */
+export function syncGatewayToEditors(): void {
+  editorInstances.forEach((view, tabModuleId) => {
+    const doc = view.state.doc.toString();
+    const next = store.resolveGatewayDisplay(doc);
+    if (next !== doc) {
+      view.dispatch({ changes: { from: 0, to: doc.length, insert: next } });
+    }
   });
 }
 

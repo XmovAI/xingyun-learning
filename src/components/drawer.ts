@@ -8,7 +8,6 @@ import { createCodeEditor } from './code-editor';
 import { createActionBar } from './action-bar';
 import { createLogPanel } from './log-panel';
 import { createDocsPanel } from './docs-panel';
-import { createAgentConfigPanel } from './agent-config';
 import { createInitConfigPanel } from './init-config';
 
 export function createDrawer(): HTMLElement {
@@ -35,6 +34,21 @@ export function createDrawer(): HTMLElement {
     drawer.classList.toggle('drawer--open', state.drawerOpen);
   });
 
+  // Live secondary-tab gating: connection-required tabs grey out when disconnected.
+  // Separate subscription so connection changes don't re-create editors.
+  store.subscribe((state) => {
+    const container = document.getElementById('secondary-tabs');
+    if (!container) return;
+    const connected = !!state.sdkConnected;
+    const buttons = container.querySelectorAll<HTMLElement>('.secondary-tab');
+    buttons.forEach((btn) => {
+      if (btn.dataset.requiresConnection !== '1') return;
+      const disabled = !connected;
+      btn.classList.toggle('secondary-tab--disabled', disabled);
+      (btn as HTMLButtonElement).disabled = disabled;
+    });
+  });
+
   return drawer;
 }
 
@@ -51,20 +65,36 @@ export function renderDrawerContent(
 
   titleEl.textContent = title;
 
+  const connected = !!store.get().sdkConnected;
+
   // Render secondary tabs
   tabsContainer.innerHTML = '';
   for (const tab of secondaryTabs) {
+    const disabled = !!tab.requiresConnection && !connected;
     const btn = document.createElement('button');
-    btn.className = 'secondary-tab' + (tab.id === activeTabId ? ' secondary-tab--active' : '');
+    btn.className = 'secondary-tab'
+      + (tab.id === activeTabId ? ' secondary-tab--active' : '')
+      + (disabled ? ' secondary-tab--disabled' : '');
     btn.textContent = tab.label;
+    btn.dataset.secondaryId = tab.id;
+    btn.dataset.requiresConnection = tab.requiresConnection ? '1' : '0';
+    btn.disabled = disabled;
     btn.addEventListener('click', () => {
+      // Guard at click time too — connection may have changed since render
+      if (tab.requiresConnection && !store.get().sdkConnected) return;
       store.set({ activeSecondaryTab: tab.id });
     });
     tabsContainer.appendChild(btn);
   }
 
-  // Render active tab content
-  const activeTab = secondaryTabs.find(t => t.id === activeTabId);
+  // Render active tab content (fall back to first available tab when the
+  // requested one is gated behind a missing connection)
+  const requested = secondaryTabs.find(t => t.id === activeTabId);
+  let shownId = activeTabId;
+  if (requested?.requiresConnection && !connected) {
+    shownId = secondaryTabs.find(t => !t.requiresConnection)?.id || activeTabId;
+  }
+  const activeTab = secondaryTabs.find(t => t.id === shownId);
   if (!activeTab) {
     contentContainer.innerHTML = '';
     return;
@@ -93,9 +123,6 @@ export function renderDrawerContent(
         break;
       case 'log':
         section.appendChild(createLogPanel());
-        break;
-      case 'config':
-        section.appendChild(createAgentConfigPanel());
         break;
       case 'init-config':
         section.appendChild(createInitConfigPanel());

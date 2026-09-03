@@ -1,21 +1,34 @@
 // ============================================
-// Init Config Panel — appId / appSecret form (placeholders injected at execution time)
+// Init Config Panel — appId / appSecret / gatewayServer form
+// (placeholders injected at execution time)
 // ============================================
 
-import { store, INIT_CONFIG_STORAGE_KEY } from '../state/app-state';
+import { store, INIT_CONFIG_STORAGE_KEY, DEFAULT_GATEWAY } from '../state/app-state';
 import { makeCollapsible } from './collapsible';
+import { syncGatewayToEditors } from './code-editor';
 
-function loadConfig(): { appId: string; appSecret: string } {
+interface InitConfig {
+  appId: string;
+  appSecret: string;
+  gatewayServer: string;
+}
+
+function loadConfig(): InitConfig {
   try {
     const raw = localStorage.getItem(INIT_CONFIG_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { appId: '', appSecret: '' };
+    const data = raw ? JSON.parse(raw) : {};
+    return {
+      appId: data.appId || '',
+      appSecret: data.appSecret || '',
+      gatewayServer: data.gatewayServer || DEFAULT_GATEWAY,
+    };
   } catch {
-    return { appId: '', appSecret: '' };
+    return { appId: '', appSecret: '', gatewayServer: DEFAULT_GATEWAY };
   }
 }
 
-function saveConfig(appId: string, appSecret: string) {
-  localStorage.setItem(INIT_CONFIG_STORAGE_KEY, JSON.stringify({ appId, appSecret }));
+function saveConfig(config: InitConfig) {
+  localStorage.setItem(INIT_CONFIG_STORAGE_KEY, JSON.stringify(config));
 }
 
 export function createInitConfigPanel(): HTMLElement {
@@ -57,9 +70,16 @@ export function createInitConfigPanel(): HTMLElement {
   appSecretInput.placeholder = '你的 App Secret';
   appSecretInput.value = config.appSecret;
 
+  const gatewayInput = document.createElement('input');
+  gatewayInput.className = 'config-field-input';
+  gatewayInput.type = 'text';
+  gatewayInput.placeholder = DEFAULT_GATEWAY;
+  gatewayInput.value = config.gatewayServer;
+
   const fields = [
     { label: 'AppId', input: appIdInput },
     { label: 'AppSecret', input: appSecretInput },
+    { label: 'Gateway Server', input: gatewayInput },
   ];
 
   for (const { label, input } of fields) {
@@ -76,26 +96,30 @@ export function createInitConfigPanel(): HTMLElement {
   }
 
   // Save — 只持久化配置，不改动编辑器代码。
-  // {{appId}} / {{appSecret}} 占位符保持原样，点击「执行」时由 code-executor 注入。
+  // {{appId}} / {{appSecret}} / {{gatewayServer}} 占位符保持原样，点击「执行」时由 code-executor 注入。
   panel.querySelector('#init-config-save')!.addEventListener('click', () => {
     const appId = appIdInput.value.trim();
     const appSecret = appSecretInput.value.trim();
+    const gatewayServer = gatewayInput.value.trim() || DEFAULT_GATEWAY;
 
     if (!appId || !appSecret) {
       store.log('error', '请填写 AppId 和 AppSecret');
       return;
     }
 
-    saveConfig(appId, appSecret);
-    store.log('info', '凭证已保存，点击「执行」时自动注入到代码');
+    saveConfig({ appId, appSecret, gatewayServer });
+    syncGatewayToEditors();
+    store.log('info', '凭证已保存，Gateway 已同步到代码，点击「执行」时自动注入 AppId/AppSecret');
   });
 
   // Clear
   panel.querySelector('#init-config-clear')!.addEventListener('click', () => {
     appIdInput.value = '';
     appSecretInput.value = '';
+    gatewayInput.value = DEFAULT_GATEWAY;
     localStorage.removeItem(INIT_CONFIG_STORAGE_KEY);
-    store.log('info', '凭证已清空');
+    syncGatewayToEditors();
+    store.log('info', '凭证已清空（Gateway 已恢复为默认地址）');
   });
 
   return panel;

@@ -7,7 +7,6 @@ import {
   CREATE_INSTANCE_ACTIONS,
   CONNECT_RENDER_ACTIONS,
   SPEAK_ACTIONS,
-  SSML_ACTIONS,
   KA_ACTIONS_DEF,
   EMOTION_ACTIONS,
   INVISIBLE_ACTIONS,
@@ -15,8 +14,10 @@ import {
   WALK_ACTIONS,
   LAYOUT_ACTIONS,
   WIDGET_ACTIONS,
+  AGENT_INIT_ACTIONS,
   AGENT_TEXT_ACTIONS,
   AGENT_VOICE_ACTIONS,
+  DEMO_ACTIONS,
 } from '../data/action-definitions';
 import { CODE_TEMPLATES } from '../data/code-templates';
 
@@ -36,15 +37,20 @@ function escapeHtml(s: string): string {
 
 // --- Docs Content ---
 const DOCS = {
-  prerequisite: `## 前置准备
+  prerequisite: `![星云 End-to-End AI Screen Platform 架构](${import.meta.env.BASE_URL}agent-architecture.png)
 
-在接入星云具身驱动 SDK 之前，你需要完成以下准备工作。
+星云是一个端到端 AI 屏幕平台：覆盖 **多模态感知 → 专属智脑 → 多模态表达 → AI 端渲** 的完整闭环，能力通过 SDK 支撑实现，适配**固定屏幕**、**移动屏幕**与**机器人**三类终端。
+
+## 前置准备
+
+在接入星云 **端到端 SDK（XingyunAvatarAgent）** 之前，你需要完成以下准备工作。
 
 ### 1. 注册与获取凭证
 
 1. 访问 [魔珐星云平台](https://xingyun3d.com/) 注册账号${INVITE_SUFFIX}
 2. 创建一个**驱动应用**，选择角色、音色、表演风格
-3. 获取 **App ID** 和 **App Secret** —— 这两个值是 SDK 初始化的必填凭证，用于身份识别和请求签名
+3. 获取 **App ID** 和 **App Secret** —— SDK 初始化的必填凭证，用于身份识别和请求签名
+4. 取得 **gatewayServer**（Agent 会话接口地址），公共网关填写为\`https://nebula-agent.xingyun3d.com/user/v1/ttsa_v2/session\`
 
 ### 2. 环境要求
 
@@ -53,167 +59,190 @@ const DOCS = {
 | **浏览器** | Chrome 94+ / Edge 94+ / Safari 15+ / Firefox 100+（推荐 Chrome 以获得最佳性能） |
 | **WebGL** | 需要 WebGL 2.0 支持 |
 | **网络** | 需要稳定的 WebSocket 连接 |
-| **容器** | 需要一个 DOM 容器元素用于挂载 Canvas |
+| **容器** | 需要一个有明确宽高的 DOM 容器元素用于挂载 Canvas |
+| **麦克风** | 使用语音识别时，页面须运行在 HTTPS 或 localhost 并获得麦克风权限 |
 | **芯片** | x86 架构芯片；ARM 架构芯片：RK3588 建议清晰度 1080P，RK3566 建议清晰度 720P |
 
-### 3. SDK 加载
+### 3. SDK 安装
 
-SDK 通过 CDN script 标签加载，暴露 \`window.XmovAvatar\` 全局变量：
+两种引入方式，任选其一：
+
+**方式一：CDN 引入（本教学项目采用）**
+
+在 HTML 中用 \`<script>\` 标签加载**最新版**的端到端 SDK，加载后自动暴露全局变量 \`window.XingyunAvatarAgent\`：
 
 \`\`\`html
-<script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar@latest.js"><\/script>
+<script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar_e2e@latest.js"></script>
+\`\`\`
+
+本教学项目已在 \`index.html\` 中引入上述地址，代码里可直接 \`new XingyunAvatarAgent(...)\`，无需额外安装。
+
+**方式二：npm 引入（推荐用于正式工程）**
+
+\`\`\`bash
+pnpm add @xmov/avatar@latest
+# 或 npm install @xmov/avatar@latest
+\`\`\`
+
+\`\`\`javascript
+import XingyunAvatarAgent from "@xmov/avatar/agent";
 \`\`\`
 
 ### 4. 核心能力概览
 
+- **端到端具身智能体**：在数字人渲染之上闭环「感知 → 认知 → 表达」（ASR 语音识别 + LLM Brain 对话 + 数字人播报）
+- **文本对话**：\`ask()\` 发起 Brain 对话，支持多轮问答
+- **语音交互**：\`startASR()\` / \`stopASR()\` 采集麦克风并由平台 ASR 识别，识别结果实时回调
+- **直接播报**：\`speak()\` 支持 SSML、动作、情绪、Widget
 - **实时 3D 数字人渲染**：基于 WebGL 的 GPU 加速渲染，支持面部表情、口型、骨骼动画的实时驱动
-- **SSML 语音合成**：支持通过 SSML 标签驱动播报、停顿、注音、动作，口型与语音精准同步
-- **多状态行为控制**：提供 Idle、Interactive Idle、Listen、Think、Speak 等多种行为状态
-- **Widget 组件**：支持在数字人画面上叠加展示图片、字幕、视频等自定义 UI 组件
-- **事件回调**：提供丰富的回调接口，覆盖状态变化、语音播放、网络质量、错误处理等环节
+- **状态与回调和断线重连**：Agent / ASR / 对话状态机 + 自动重连
 `,
 
   createInstance: `## 创建数字人实例
 
-使用 \`new XmovAvatar(options)\` 创建实例。构造函数接受一个 \`options\` 配置对象。
+使用 \`new XingyunAvatarAgent(options)\` 创建**端到端数字人（Agent）**实例。构造函数接受一个 \`options\` 配置对象。
 
 ### 必填参数
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| \`appId\` | \`string\` | 应用 ID，由平台分配，用于身份识别 |
-| \`appSecret\` | \`string\` | 应用密钥，由平台分配，用于请求签名 |
-| \`gatewayServer\` | \`string\` | 网关服务地址。固定值：\`https://nebula-agent.xingyun3d.com/user/v1/ttsa/session\` |
-| \`onMessage\` | \`(error: SDKError) => void\` | 错误/事件回调，**必须实现** |
+| \`containerId\` | \`string\` | 数字人容器 CSS 选择器，如 \`#avatar-container\` |
+| \`appId\` | \`string\` | 应用 ID，由平台分配 |
+| \`appSecret\` | \`string\` | 应用密钥，由平台分配（浏览器侧签名凭证） |
+| \`gatewayServer\` | \`string\` | Agent 会话接口完整地址（**ttsa_v2 版本**） |
+| \`onMessage\` | \`(error) => void\` | Avatar / 会话 / 渲染错误回调，**必须实现** |
 
-### 容器配置
+> gatewayServer 与旧版不同：端到端 SDK 使用 \`https://nebula-agent.xingyun3d.com/user/v1/ttsa_v2/session\`（路径升级为 \`ttsa_v2\`）。「初始化」面板已预填该默认地址。
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| \`containerId\` | \`string\` | CSS 选择器，如 \`#avatar-container\` |
-| \`container\` | \`HTMLElement\` | DOM 元素引用（优先级更高） |
+### Agent 参数（项目方提供）
 
-> 两个参数至少填写一个。若都填写，优先取 \`container\`。
+| 参数 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| \`asr_config\` | \`object\` | 无 | ASR 服务配置（**可选**）。不配置时使用平台默认；自定义 provider / base_url / headers / request 时传入 |
+| \`brain_config\` | \`object\` | 无 | Brain/LLM 服务配置（**可选**）。不配置时使用平台默认；自定义 provider / base_url / api_key / model / preset / history_length / extra_body 时传入 |
+| \`reconnect\` | \`object\` | 开启 | 自动重连（enabled / maxAttempts / initialDelayMs / maxDelayMs） |
+| \`features\` | \`object\` | 无 | 增强功能开关（识别结果自动进 Brain \`auto_send_asr_to_llm\`、抗干扰语义判断 \`anti_interference\`、语音前处理 \`speech_frontend\`、VAD 合并 \`vad_merge_mode\` 等） |
+| \`extras\` | \`object\` | 无 | 与服务端约定的业务扩展参数 |
+| \`session_speak_req_id\` | \`0 \\| 1\` | \`1\` | 会话是否包含开场白 |
+| \`audio.inputEnabled\` | \`boolean\` | \`false\` | 初始化后是否立即开启音频输入 |
 
-### 可选参数
+### 回调：agentCallbacks
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| \`config\` | \`object\` | \`undefined\` | 运行时配置（布局、行走、背景等），详见布局 Tab |
-| \`enableClientInterrupt\` | \`boolean\` | \`false\` | 是否启用客户端打断功能 |
-
-### 回调参数
+Agent 专属回调组，与旧版顶层回调并存：
 
 | 回调 | 类型 | 说明 |
 |------|------|------|
-| \`onStatusChange\` | \`(status: AvatarStatus) => void\` | 数字人状态变化（online/offline/close/invisible） |
-| \`onRenderChange\` | \`(state: RenderState) => void\` | 渲染状态变化（init/rendering/paused/stopped） |
-| \`onVoiceStateChange\` | \`(state: string, duration?: number) => void\` | 语音播放状态（start/end） |
-| \`onSpeakStateChange\` | \`(state: string, speakId: string) => void\` | 说话状态（speak_start/speak_end/speak_error） |
-| \`onWalkStateChange\` | \`(state: string) => void\` | 行走状态（walk_start/walk_end） |
-| \`onWidgetEvent\` | \`(data: IRawWidgetData) => void\` | UI 组件事件回调 |
-| \`proxyWidget\` | \`{ [key: string]: (data: any) => void }\` | 按组件类型注册自定义渲染函数 |
-| \`onNetworkInfo\` | \`(info: INetworkInfo) => void\` | 网络质量回调（RTT、下行速率） |
-| \`onStartSessionWarning\` | \`(message: object) => void\` | 会话配置警告 |
+| \`onAgentStateChange\` | \`(state) => void\` | Agent 状态：idle / initializing / ready / running / reconnecting / stopped / destroyed / failed |
+| \`onASRStateChange\` | \`(state) => void\` | 麦克风与识别状态：idle / requesting-permission / starting / listening / stopping / failed |
+| \`onASRResult\` | \`({ text, isFinal }) => void\` | 识别文本（先临时后最终，isFinal=true 为稳定结果） |
+| \`onLLMResponse\` | \`({ event, text? }) => void\` | LLM 流式文本（chunk / done） |
+| \`onConversationChange\` | \`({ state, text? }) => void\` | 对话主状态：idle / asking / speaking-directly / speaking / completed / interrupted / failed |
+| \`onSpeakStateChange\` | \`({ state }) => void\` | 播报状态 |
+| \`onSemanticJudgeResult\` | \`({ query, meaningful, action }) => void\` | 抗干扰语义判断结果 |
+| \`onSocketStateChange\` | \`(state) => void\` | E2E 连接状态 |
+| \`onError\` | \`(error) => void\` | Agent / ASR / Brain / 网络 / 配额错误 |
+
+> **AgentError** 结构：\`{ code: string, message: string, domain: 'permission'\|'network'\|'asr'\|'brain'\|'ttsa'\|'quota'\|'sdk', retryable?, cause? }\`。需与 \`onMessage\`（Avatar/会话/渲染错误）并行处理。
+
+### 常用参数
+
+端到端 SDK 支持下列常用参数：\`config\`（运行时配置）、\`enableClientInterrupt\`、顶层回调 \`onStatusChange\` / \`onRenderChange\` / \`onVoiceStateChange\` / \`onWalkStateChange\` / \`onWidgetEvent\` / \`proxyWidget\` / \`onNetworkInfo\`。
+
+### 占位符
+
+创建实例代码中的 \`{{gatewayServer}}\` 会**实时同步**「初始化」表单的 Gateway Server 输入（保存/清空即生效，未配置时显示默认 ttsa_v2 地址）；\`{{appId}}\` / \`{{appSecret}}\` 会在「执行」时自动注入。下面表单保存后即可运行。
+
+工具栏的「最简配置」/「完全配置」用于切换模板：**表单配置的字段（appId / appSecret / gatewayServer）恢复为 \`{{占位符}}\`**，不在代码里烘焙字面量；**其余字段保留当前代码的值**（如你改过的 containerId、回调函数体、reconnect 参数），模板只决定字段集合——切到完全会补上 config、reconnect、onStatusChange 等，切回最简会移除它们。你要改的任何非表单字段在切换后都还在。
 `,
 
-  connectRender: `## 连接与渲染
+  connectRender: `## 连接与销毁
 
 ### init() — 初始化
 
-加载资源包、建立 WebSocket 连接、初始化渲染器。
+初始化 Agent：下载数字人资源、建立会话与连接。参数可选（\`onDownloadProgress\` 上报 0–100 进度）。**Promise 返回时 Agent 即为 \`running\`**，可直接发起对话 / ASR：
 
 \`\`\`javascript
-await avatar.init({
-  onDownloadProgress(progress) {
-    console.log('加载进度:', progress + '%');
-  },
-});
+await avatar.init();
+log('Agent 状态:', avatar.getAgentState());   // running
 \`\`\`
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| \`params.onDownloadProgress\` | \`(progress: number) => void\` | **必填**，资源加载进度回调（0-100） |
-| \`params.initModel\` | \`InitModel\` | 可选，设为 \`invisible\` 可在启动时进入隐身模式 |
+\`init()\` 失败会拒绝 Promise，此时应销毁实例后重建，不要直接复用失败实例。
 
-**返回** \`Promise<void>\`，初始化完成后 resolve，失败时 reject。
+### destroy() — 销毁
 
-### destroy() — 完整销毁
-
-销毁 SDK 实例，释放所有资源，并通知服务端结束会话。
+销毁实例，释放麦克风、连接与数字人资源。调用后实例不可再初始化或复用：
 
 \`\`\`javascript
-await avatar.destroy('reason');
+await avatar.destroy('user_action');
 \`\`\`
+
+页面退出 / 组件卸载时应调用 \`destroy()\`，只删除容器无法释放麦克风与连接资源。
+
+### Agent 状态机
+
+页面能否发起对话，以 **\`running\`** 为准：
+
+\`\`\`text
+idle → initializing → ready → running（可对话 / ASR） ↔ reconnecting
+                        │
+                        ↓
+             destroyed / failed（不可恢复）
+\`\`\`
+
+| 状态 | 建议 |
+|------|------|
+| \`initializing\` / \`ready\` | 显示加载状态，禁用对话与 ASR |
+| \`running\` | 允许发起对话与 ASR |
+| \`reconnecting\` | 禁用新操作，提示连接恢复中 |
+| \`failed\` / \`destroyed\` | 展示错误并重建实例 |
 
 ### 状态控制方法
 
-| 方法 | 说明 |
-|------|------|
-| \`idle()\` | 切换到空闲状态，停止当前动作 |
-| \`interactiveidle()\` | 切换到交互空闲状态，表示可交互等待 |
-| \`listen()\` | 切换到聆听状态 |
-| \`getStatus()\` | 获取当前数字人状态 |
-| \`getRenderState()\` | 获取当前渲染状态 |
-
-### 网络与会话控制
-
-| 方法 | 说明 |
-|------|------|
-| \`offlineMode()\` | 手动进入离线模式 |
-| \`onlineMode()\` | 手动进入在线模式，触发重连 |
-| \`reStartSession()\` | 手动触发会话重启/重连 |
-| \`getSessionId()\` | 获取当前会话 ID |
+行为状态 \`idle()\` / \`interactiveidle()\` / \`listen()\`、查询 \`getStatus()\` / \`getRenderState()\` / \`getSessionId()\`、会话 \`offlineMode()\` / \`onlineMode()\` / \`reStartSession()\` 在端到端 SDK 中同样可用。
 
 ### 断线重连
 
-SDK 自动处理断线重连（最多 27 次）。断线时播放预缓存的 Idle 动画，重连成功后自动恢复状态。
-
-\`\`\`
-visible → (断线) → offline → (重连成功) → visible
-                        ↓ (重连失败)
-                      close
-\`\`\`
+端到端 SDK 内置自动重连（默认开启，可用构造参数 \`reconnect\` 配置 maxAttempts 等）。重连期间状态为 \`reconnecting\`；SDK 不会重放断线前的文本、打断或音频，恢复到 \`running\` 后由业务决定是否重新发起操作。断线前正在运行的 ASR 不会自动恢复，需重新 \`startASR()\`。
 `,
 
   speak: `## 播报
 
-使用 \`avatar.speak(ssml, is_start?, is_end?, extra?)\` 驱动数字人说话播报。
+播报由 \`speak()\` 驱动，支持 SSML、动作、情绪、Widget 等能力。
 
-### 基本用法
+\`speak()\` **返回只表示已发起**，不表示播报完成；播报结束靠 \`agentCallbacks.onSpeakStateChange\` / \`onConversationChange\` 判断。
+
+### SSML 播报
 
 \`\`\`javascript
-avatar.speak('<speak>你好！</speak>');
+avatar.speak('<speak>大家好！<break time="500ms"/>欢迎来到魔珐星云。</speak>');
 \`\`\`
 
 ### 流式播报
 
-分段发送长文本，使用 \`is_start\` 和 \`is_end\` 标记边界，适用于实时对话和长文本场景：
+分段发送长文本，使用 \`is_start\` / \`is_end\` 标记边界：
 
 \`\`\`javascript
-// 第一段（开始）
 avatar.speak('<speak>这是第一句话。</speak>', true, false);
-// 中间段
 avatar.speak('<speak>这是第二句话。</speak>', false, false);
-// 最后一段（结束）
 avatar.speak('<speak>这是最后一句话。</speak>', false, true);
 \`\`\`
 
 ### 带情绪播报
 
-通过 \`extra.emotion\` 参数指定情绪，影响音色和面部表情：
-
 \`\`\`javascript
 avatar.speak('<speak>太棒了！</speak>', true, true, { emotion: 'happy' });
 \`\`\`
 
-### 打断（interrupt）
+### 打断 — interrupt()
 
-需要在创建实例时设置 \`enableClientInterrupt: true\`：
+\`interrupt(type)\` 立即打断当前播报，返回打断耗时（毫秒）。构造参数 \`enableClientInterrupt\` 默认开启，打断由客户端本地处理、时延最短：
 
 \`\`\`javascript
-const latency = avatar.interrupt('user'); // 返回打断耗时（毫秒）
+const latency = avatar.interrupt('speak');
+log('打断耗时:', latency, 'ms');
 \`\`\`
+
+> \`type\` 为打断来源标签（\`'user'\` / \`'user_speaking'\` / \`'user_click'\` / \`'speak'\` / \`'in_offline_mode'\`），不影响打断行为。打断不会自动关闭 ASR；需要结束监听时再调用 \`stopASR()\`。
 
 ### speak() 参数说明
 
@@ -223,24 +252,11 @@ const latency = avatar.interrupt('user'); // 返回打断耗时（毫秒）
 | \`is_start\` | \`boolean\` | 否 | 是否为本次说话的第一段（默认 true） |
 | \`is_end\` | \`boolean\` | 否 | 是否为本次说话的最后一段（默认 true） |
 | \`extra\` | \`object\` | 否 | 额外参数，如 \`{ emotion: 'happy' }\` |
-
-### 语音状态回调
-
-通过构造参数中的 \`onVoiceStateChange\` 和 \`onSpeakStateChange\` 可监听语音和说话状态：
-
-\`\`\`javascript
-onVoiceStateChange(state, duration) {
-  // state: 'start' | 'end', duration: 毫秒数（仅 start 时）
-},
-onSpeakStateChange(state, speakId) {
-  // state: 'speak_start' | 'speak_end' | 'speak_error'
-},
-\`\`\`
 `,
 
   stateSwitch: `## 状态切换
 
-数字人支持多种行为状态，通过以下方法切换（调用后会同步通知服务端）。
+数字人支持多种行为状态。以下状态方法在端到端 SDK 中同样可用（调用后会同步通知服务端）。
 
 ### 状态一览
 
@@ -254,19 +270,14 @@ onSpeakStateChange(state, speakId) {
 ### 典型流程
 
 \`\`\`javascript
-// 用户开始输入
-avatar.listen();
-
-// AI 回复到达，开始说话
-avatar.speak('<speak>这是回复内容</speak>');
-
-// 说话结束，回到交互空闲（实践中由 onSpeakStateChange 的 'end' 事件触发）
-avatar.interactiveidle();
+avatar.listen();                                // 用户开始输入
+avatar.speak('<speak>这是回复内容</speak>');    // AI 回复到达，开始说话
+avatar.interactiveidle();                       // 说话结束，回到交互空闲
 \`\`\`
 
 ### 语音打断
 
-打断数字人当前说话，返回打断耗时（毫秒）。**需要创建实例时设置 \`enableClientInterrupt: true\`**（见「创建实例」的完整配置模板）。
+\`interrupt(type)\` 打断当前播报，返回打断耗时（毫秒）。构造参数 \`enableClientInterrupt\` 默认开启；打断不会自动关闭 ASR / 麦克风，需要结束监听时再调用 \`stopASR()\`。
 
 \`\`\`javascript
 // 先播放一段长语音，停留 2 秒后打断
@@ -276,97 +287,16 @@ const latency = avatar.interrupt('user');
 log('打断耗时:', latency, 'ms');
 \`\`\`
 
-\`type\` 参数为打断来源标签（\`'user'\` / \`'user_speaking'\` / \`'speak'\` 等）。除 \`'in_offline_mode'\` 外，所有 type 行为完全相同，仅用于日志区分。
+> \`interrupt(type)\` 的 \`type\` 参数为打断来源标签（\`'user'\` / \`'user_speaking'\` / \`'user_click'\` / \`'speak'\` / \`'in_offline_mode'\`），除 \`'in_offline_mode'\` 外行为完全相同，仅用于日志区分。
 
-### 获取当前状态
+### Agent / ASR 状态查询
 
 \`\`\`javascript
-const status = avatar.getStatus();               // AvatarStatus：0=在线, 1=离线, 4=关闭, 5=可见, 6=隐身
-const renderState = avatar.getRenderState();     // RenderState：init / rendering / paused / stopped
-log('状态:', status, '渲染:', renderState);
-\`\`\`
-`,
-
-  ssml: `## SSML 基础
-
-SSML（语音合成标记语言）驱动数字人的**播报、停顿、注音、动作、行走、控件**。SDK 参考了 Azure SSML 标准并做了简化适配。
-
-> 一句话理解：在 \`speak()\` 里传入的每一段文字，都可以混合嵌入指令标签，数字人会按顺序边说边做动作、展示控件、移动位置。
-
-### 根标签 \`<speak>\`
-
-所有 SSML 内容必须包裹在 \`<speak>\` 标签中：
-
-\`\`\`xml
-<speak>
-  ... 内容和指令 ...
-</speak>
-\`\`\`
-
-### 子标签一览
-
-| 标签 | 用途 | 类别 |
-|------|------|------|
-| \`<break>\` | 停顿 | 基础 |
-| \`<phoneme>\` | 注音（多音字纠正） | 基础 |
-| 纯文本 | 汉字/英文，正常播报 | 基础 |
-| \`<ue4event>\` | 关键动作（ka/ka_intent）、行走（walk） | 动作 |
-| \`<uievent>\` | 自定义控件事件（图片/视频/链接/文本卡片/背景音乐） | 控件 |
-
-### 1. 停顿 \`<break>\`
-
-在句子之间插入停顿：
-
-\`\`\`xml
-<speak>
-  第一句话。
-  <break time="500ms"/>
-  停半秒后第二句话。
-</speak>
-\`\`\`
-
-### 2. 注音 \`<phoneme>\`
-
-给多音字/生僻字标注正确读音：
-
-\`\`\`xml
-<speak>
-  这项<phoneme py="mei3 di4">美的</phoneme>技术正在改变世界。
-</speak>
-\`\`\`
-
-> \`py\` 属性格式：拼音 + 声调数字，多字用空格分隔。生僻字和特殊字符建议预处理过滤。
-
-### 3. 自定义控件 \`<uievent>\`
-
-说话时弹出图片、视频、链接等控件（详见 Widget Tab）：
-
-\`\`\`xml
-<speak>
-  请看大屏幕。
-  <uievent>
-    <type>show_image</type>
-    <data><image>https://example.com/poster.png</image><title>新品发布</title></data>
-  </uievent>
-</speak>
-\`\`\`
-
-### 4. 关键动作与行走
-
-通过 \`<ue4event>\` 嵌入，详见"KA"和"行走" Tab。
-
-### 组合示例
-
-\`\`\`xml
-<speak>
-  大家好，欢迎来到产品发布会。
-  <ue4event><type>ka</type><data><action_semantic>Elevate</action_semantic></data></ue4event>
-  首先介绍今天的主题。
-  <break time="500ms"/>
-  各位请看大屏幕。
-  <uievent><type>show_image</type><data><image>https://example.com/slide.png</image><title>产品路线图</title></data></uievent>
-  <phoneme py="gan4 xie4">感谢</phoneme>大家的聆听！
-</speak>
+const agentState = avatar.getAgentState();       // running / stopped / failed / ...
+const asrState   = avatar.getASRState();         // idle / requesting-permission / listening / ...
+const status     = avatar.getStatus();           // 状态码：0=在线, 1=离线, 4=关闭, 5=可见, 6=隐身
+const renderState = avatar.getRenderState();     // 渲染状态：init / rendering / pausing / paused / resumed / stopped
+log('Agent:', agentState, 'ASR:', asrState, '状态:', status, '渲染:', renderState);
 \`\`\`
 `,
 
@@ -374,7 +304,7 @@ SSML（语音合成标记语言）驱动数字人的**播报、停顿、注音�
 
 KA = Key Action，数字人的预设肢体动作。通过 SSML 中的 \`<ue4event>\` 标签嵌入，数字人会在播报**对应文本的同时**做出动作。
 
-> 关键动作不是客户端 API，而是通过 SSML 标签下发给**服务端**处理。服务端在合成语音的同时驱动数字人做出肢体动作。
+> 关键动作不是客户端 API，而是通过 SSML 标签下发给**服务端**处理。服务端在合成语音的同时驱动数字人做出肢体动作。端到端 SDK 同样支持该能力，通过 \`speak()\` 交互式驱动。
 
 ### 两种类型
 
@@ -501,7 +431,7 @@ avatar.speak(ssml, true, true, { emotion: 'happy' });
 
   invisible: `## 隐身模式
 
-隐身模式用于在不需要数字人画面时暂停渲染、节省 CPU/GPU 资源。
+隐身模式用于在不需要数字人画面时暂停渲染、节省 CPU/GPU 资源。端到端 SDK 提供两种可见性 API：
 
 ### 两种可见性 API 对比
 
@@ -524,28 +454,17 @@ avatar.changeAvatarVisible(false);  // 隐藏 Canvas（渲染仍在进行）
 avatar.changeAvatarVisible(true);   // 重新显示
 \`\`\`
 
-### 隐身初始化
-
-启动时即进入隐身模式，延迟到需要时再恢复：
-
-\`\`\`javascript
-await avatar.init({ initModel: 'invisible' });  // 无渲染启动
-// 需要时恢复
-avatar.switchInvisibleMode();
-\`\`\`
-
 ### 使用场景
 
 | 场景 | 推荐 API |
 |------|----------|
 | 用户最小化窗口/切到后台 | \`switchInvisibleMode()\` — 节省资源 |
 | 仅需隐藏画面、保留音频 | \`changeAvatarVisible(false)\` |
-| 首次加载不需要展示数字人 | \`init({ initModel: 'invisible' })\` |
 `,
 
   walk: `## 行走动画
 
-行走动画允许数字人在水平方向上移动位置，适用于虚拟展厅、引导讲解等场景。
+行走动画允许数字人在水平方向上移动位置，适用于虚拟展厅、引导讲解等场景。端到端 SDK 支持配置点位，并在播报 SSML 中触发行走。
 
 > ⚠️ 行走属于**定制化功能**，需要角色制作时预置行走动画数据。
 
@@ -605,17 +524,17 @@ avatar.speak(ssml);
 
 \`\`\`javascript
 onWalkStateChange(state) {
-  if (state === 'walk_start') console.log('数字人开始行走');
-  if (state === 'walk_end') console.log('数字人到达目的地');
+  if (state === 'start') console.log('数字人开始行走');
+  if (state === 'end') console.log('数字人到达目的地');
 }
 \`\`\`
 
-> ⚠️ 必须先调用 \`changeWalkConfig()\` 配置好点位，再发行走 SSML。\`target\` 必须在 \`walk_points\` 中存在。
+> ⚠️ 必须先调用 \`changeWalkConfig()\` 配置好点位，再发行走 SSML。\`target\` 必须在 \`walk_points\` 中存在；\`changeWalkConfig()\` 仅在数字人**非行走状态**下生效，正在行走时调用不生效。
 `,
 
   layout: `## 布局配置
 
-Layout 配置控制数字人在容器中的位置和大小。
+Layout 配置控制数字人在容器中的位置和大小。可静态传入 \`config.layout\` 构造参数，或运行时调用 \`changeLayout()\` 动态修改。
 
 ### Layout 接口
 
@@ -657,7 +576,7 @@ avatar.changeLayout({
 ### 构造时配置
 
 \`\`\`javascript
-const avatar = new XmovAvatar({
+const avatar = new XingyunAvatarAgent({
   // ...
   config: {
     layout: {
@@ -679,7 +598,7 @@ const avatar = new XmovAvatar({
 
   widget: `## Widget 自定义渲染
 
-Widget 机制允许在数字人播报过程中渲染图片、视频、链接等多媒体元素。
+Widget 机制允许在数字人播报过程中渲染图片、视频、链接等多媒体元素。通过构造参数 \`onWidgetEvent\` / \`proxyWidget\` 接收 Widget 事件并自行渲染。
 
 ### 两种回调方法
 
@@ -698,7 +617,7 @@ onWidgetEvent(data) {
   switch (data.type) {
     case 'subtitle_on':  updateSubtitle(data.text); break;
     case 'subtitle_off': hideSubtitle(); break;
-    case 'widget_pic':   showPicture(data.url); break;
+    case 'widget_pic':   showPicture(data.image); break;
   }
 }
 \`\`\`
@@ -709,7 +628,7 @@ onWidgetEvent(data) {
 proxyWidget: {
   subtitle_on(data)  { updateSubtitle(data.text); },
   subtitle_off(data) { hideSubtitle(); },
-  widget_pic(data)   { showPicture(data.url); },
+  widget_pic(data)   { showPicture(data.image); },
   custom_card(data)  { renderCustomCard(data); },
 }
 \`\`\`
@@ -722,7 +641,7 @@ proxyWidget: {
 |-----------|------|----------|
 | \`subtitle_on\` | 显示字幕 | \`data.text\` |
 | \`subtitle_off\` | 隐藏字幕 | — |
-| \`widget_pic\` | 显示图片 | \`data.url\` |
+| \`widget_pic\` | 显示图片 | \`data.image\` |
 
 ### 自定义事件类型
 
@@ -766,120 +685,67 @@ proxyWidget: {
 \`\`\`
 `,
 
-  agentArchitecture: `## 具身智能体（Embodied Agent）
+  agentInit: `## 初始化
 
-具身智能体 = **感知** → **大脑** → **表达**
+「感知&大脑」的入口：配置 ASR / Brain 相关回调与自定义服务，并通过「重新加载」一键重建实例、完成 init 连接。ASR 与 Brain 默认使用**平台预置配置**，无需额外配置即可跑通文本 / 语音对话。
 
-\`\`\`
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│    感 知      │     │    大 脑      │     │    表 达      │
-│              │     │              │     │              │
-│ 麦克风/输入    │ ──► │ 大模型推理决策  │ ──► │ 数字人呈现     │
-│ 腾讯云 ASR    │     │ 豆包 Doubao    │     │ XmovAvatar    │
-└──────────────┘     └──────────────┘     └──────────────┘
-\`\`\`
+> 本 Tab 需要先创建实例并连接成功后才可进入（未连接时「感知&大脑」在侧边栏置灰、不可点击）。
 
-### 感知
+### 使用流程
 
-获取外部信息，转换成机器可处理的信号。在本 demo 中包括：
+1. **回调函数**：在下方代码编辑器填充 ASR / LLM 相关回调（\`onASRStateChange\` / \`onASRResult\` / \`onLLMResponse\` 等），并入 \`agentCallbacks\`
+2. **自定义配置**：填充 \`asr_config\` / \`brain_config\` 示例（仅测试 / 私有化部署环境使用）
+3. **重新加载**：以「创建实例」tab 的代码为基础，合并当前编辑器中的示例代码完成实例创建配置；若当前为连接态，先销毁已有实例，再执行实例创建 + init，完成数字人重连
 
-- **键盘文本输入**：最直接的感知方式
-- **麦克风录音 → 语音识别**：通过浏览器 \`getUserMedia\` 获取音频，流式语音识别（ASR）转为文本
+### ASR 独立调用
 
-### 大脑
+「ASR独立调用」按钮演示**识别与对话解耦**：构造时设置 \`features.auto_send_asr_to_llm: false\`，关闭「识别结果自动发给 LLM」，由应用在 \`onASRResult\` 中自行判定是否发起 \`ask()\`。示例识别到文本以「你好」开头时才把问题交给 Brain（自动剥离指令前缀），否则只记录日志不发起对话。适用于需要自行筛选、节流或改写的语音触发场景。
 
-利用大语言模型（LLM）对感知信息进行理解、推理和决策。
+### 回调说明
 
-- 本 demo 使用**豆包大模型**（通过火山方舟 ARK 接入，OpenAI 兼容）
-- 设定 system prompt 让模型以数字人身份回答
-- 让模型输出友好的回复文本
+| 回调 | 说明 |
+|------|------|
+| \`onASRStateChange\` | 麦克风与识别状态：listening / stopping / failed 等 |
+| \`onASRResult\` | 识别文本：临时结果 \`isFinal:false\`，稳定结果 \`isFinal:true\` |
+| \`onLLMResponse\` | LLM 流式文本（\`event: 'chunk' / 'done'\`） |
+| \`onConversationChange\` | 对话主状态：idle / asking / speaking-directly / speaking / completed / interrupted / failed |
+| \`onError\` | Agent / ASR / Brain / 网络 / 配额错误 |
 
-### 表达
+### 安全提示
 
-将大脑的决策结果呈现给用户。在本 demo 中即 **数字人播报**。
-
-- \`avatar.speak(reply)\` 驱动数字人说话
-- 可以配合情绪（emotion）、关键动作（KA）让表达更生动
-
-### 三条链路
-
-| # | 链路 | 感知 | 大脑 | 表达 |
-|---|------|------|------|------|
-| 1 | **文本对话** | \`prompt()\` 输入 | Doubao-Seed | avatar.speak() |
-| 2 | **语音对话** | 麦克风 → ASR → 文本 | Doubao-Seed | avatar.speak() |
-
-接下来从「环境准备」开始，一步步跑通这些链路。
-`,
-
-  agentPrepare: `## 环境准备
-
-在开始调用大模型和语音识别之前，需要准备好以下凭证。
-
-### 1. 注册火山引擎账号
-
-访问 [火山引擎](https://www.volcengine.com/) 注册并完成实名认证。
-
-### 2. 获取火山方舟 ARK API Key（用于文本对话）
-
-1. 进入 [火山方舟控制台](https://console.volcengine.com/ark)
-2. 在「API Key 管理」页面创建 API Key，复制保存
-3. 在「模型广场」找到豆包模型（如 \`doubao-seed-2-0-lite-260428\`），点击「开通」并获取接入点（Endpoint）
-4. API 地址格式：\`https://ark.cn-beijing.volces.com/api/v3\`
-
-> ⚠️ API Key 等同于密码，请勿提交到代码仓库或公开分享。教学用途建议使用可随时吊销的临时 Key。
-
-### 3. 开通实时语音识别（用于语音对话）
-
-1. 进入 [语音识别控制台](https://console.cloud.tencent.com/asr) 开通服务
-2. 在 [访问管理](https://console.cloud.tencent.com/cam/capi) 获取 **SecretId** 与 **SecretKey**（API 密钥）
-3. 在账号信息页面获取 **AppId**
-4. 不需要代理——腾讯云 ASR 的 HMAC-SHA1 签名走 URL query，浏览器可直接连接 WebSocket
-
-### 4. 填写凭证
-
-**在下方表单中填写以上凭证，点击「保存配置」**：
-- 凭证将保存到浏览器本地存储
-- 编辑器中的代码始终保持 \`{{...}}\` 占位符，点击「执行」时才自动注入这些值
-- 先填 Base URL 和 API Key，然后在模型 ID 输入框填入你选择的模型 ID
-
-然后点击「测试大模型连接」验证配置是否正确。
+> ⚠️ **asr_config / brain_config 仅用于测试与私有化部署环境。**其中包含访问凭证（\`api_key\` / \`secret_key\`），对外公开展示存在密钥泄露风险。生产环境请在星云平台应用管理中配置。
 `,
 
   agentText: `## 文本对话
 
-实现流程：**用户输入 → 大模型 → 数字人说**
+端到端 SDK 将文本对话集成在 \`ask()\` 中：**输入文本 → Brain 对话 → 数字人播报**，无需自己拼接 LLM HTTP 请求。
 
-### Chat API（火山方舟 ARK，OpenAI 兼容）
+### 基本用法
 
-火山方舟 ARK 完全兼容 OpenAI 格式：
-
-\`\`\`
-POST {baseUrl}/chat/completions
-Authorization: Bearer <API_KEY>
-Content-Type: application/json
+\`\`\`javascript
+await avatar.ask('介绍一下这个产品');
 \`\`\`
 
-请求体结构：
+\`ask()\` 要求 Agent 处于 \`running\`；返回表示已成功发起，**不表示播报结束**，播报完成靠 \`agentCallbacks.onConversationChange\` / \`onSpeakStateChange\` 判断。
 
-\`\`\`json
-{
-  "model": "doubao-seed-2-0-mini-260428",
-  "messages": [
-    { "role": "system", "content": "你是数字人助手，请简短友好地回答。" },
-    { "role": "user", "content": "今天天气怎么样？" }
-  ]
-}
-\`\`\`
+### 与 speak() 的区别
 
-> 可在「环境准备」tab 的 Base URL 对应的模型广场查看可用模型 ID。
+| 方法 | 是否走 Brain | 适用场景 |
+|------|-------------|----------|
+| \`ask()\` | 是 | 问答、多轮交互、数字人自主加工内容 |
+| \`speak()\` | 否 | 固定话术、把外部系统结论直接说出来 |
+
+### 多轮对话
+
+Brain 会根据 \`brain_config.history_length\` 保留多轮上下文；每轮 \`ask()\` 都会带上历史进行推理，适合连续对话场景。
 
 ### 实现要点
 
-1. 用 \`prompt()\` 获取用户输入文本
-2. \`fetch\` 调用 ARK Chat API，解析返回的 \`choices[0].message.content\`
-3. \`avatar.speak(reply)\` 让数字人说
+1. 用 \`prompt()\` 获取用户输入文本（也可直接传固定文本）
+2. \`await avatar.ask(input)\` 发起对话
+3. 观察日志面板的 \`onConversationChange\`（asking → speaking → completed）与 \`onASRResult\` / \`onLLMResponse\` 回调
 
-> API Key 在 [火山方舟控制台](https://console.volcengine.com/ark) 创建。
+> Brain 服务默认使用平台配置（无需额外设置）；如需自定义 provider，可在「感知&大脑 → 初始化」tab 点击「自定义配置」并「重新加载」。
 
 ### 代码模板
 
@@ -888,47 +754,61 @@ Content-Type: application/json
 
   agentVoice: `## 语音对话
 
-实现流程：**麦克风录音 → ASR（腾讯云 SDK）→ 大模型 → 数字人说**
+端到端 SDK 的语音交互由**平台 ASR** 完成：**麦克风录音（startASR）→ 平台识别 → 识别结束自动进入 Brain → 数字人播报**。不需要自己引入第三方语音识别 SDK。
 
-### 使用腾讯云语音识别 SDK
+本 tab 提供「开始录音」/「停止录音」/「执行」三个按钮：前两者分别在编辑器中填充对应的示例代码，点击「执行」运行即可。
 
-本 demo 使用官方 **[tencentcloud-speech-sdk-js](https://github.com/TencentCloud/tencentcloud-speech-sdk-js)**（CDN 加载），在浏览器中直接完成录音 + WebSocket 连接 + 识别：
+### 基本用法
 
-1. SDK 通过 \`Real-time Speech Recognition (WebSocket)\` 服务直连腾讯云
-2. 鉴权使用 **HMAC-SHA1 签名**，放在 URL query 中（不是 HTTP header），因此浏览器可以直接连接，不需要代理
-3. SDK 内部处理录音（\`getUserMedia\`）、音频分包、签名生成、WebSocket 帧的收发
+\`\`\`javascript
+// 开始识别（申请麦克风权限 + 流式识别）
+await avatar.startASR();
+// 识别文本通过 agentCallbacks.onASRResult 实时回调：
+//   { text: '...', isFinal: false }  ← 临时结果
+//   { text: '...', isFinal: true }   ← 最终结果（稳定，可提交业务）
+// 结束本轮识别并释放麦克风
+await avatar.stopASR();
+\`\`\`
 
-> 腾讯云 ASR 使用 HMAC-SHA1 签名放在 URL query 中，浏览器可直接连接 WebSocket，不需要代理。
+### 使用要点
 
-### 识别参数
+1. **必须在用户操作中调用 \`startASR()\`**（如按钮点击、本页「执行」按钮触发的代码），浏览器才会允许麦克风权限
+2. 页面须运行在 HTTPS 或 localhost
+3. 录音期间可伴随数字人播报，\`interrupt(type)\` 只打断播报、不会自动关闭 ASR；要结束监听需再调用 \`stopASR()\`
+4. 识别是**异步回调**驱动：参考日志面板的 \`onASRStateChange\`（listening / stopping / failed）与 \`onASRResult\`
 
-- **引擎模型**：\`16k_zh\`（中文通用，推荐）/ \`16k_zh_en\`（中英大模型）/ \`8k_zh\`（电话场景）
-- **音频格式**：PCM（\`voice_format: 1\`）
+### 识别后自动对话
 
-### 录音流程
+识别结束（\`isFinal: true\`）后默认**自动进入 Brain 对话链路**：识别文本交给大模型，数字人播报回复，无需手动再调 \`ask()\`。该行为由构造参数 \`features.auto_send_asr_to_llm\` 控制，默认 \`true\`：
 
-1. 在「环境准备」tab 填写 ASR SecretId / SecretKey / AppId，保存配置
-2. 点「执行」→ SDK 请求麦克风权限并开始录音识别
-3. 点页面右上角浮出的「⏹ 结束录音并识别」按钮作为「手动结束」边界
-4. SDK 返回识别文本 → 交给大模型 → 数字人播报
+\`\`\`javascript
+// 识别结束自动走通「感知 → 认知 → 表达」，播报结果通过 onConversationChange / onLLMResponse 观察
+await avatar.startASR();
+\`\`\`
+
+若关闭该开关（\`auto_send_asr_to_llm: false\`），识别只产出文本，需要对话时再手动把最终文本交给 \`ask()\`（见「文本对话」Tab）。
+
+### ASR 识别参数
+
+ASR 服务（provider、base_url、vad 尾静音等）默认使用平台配置，一般无需改动。断线恢复后 ASR 不会自动重启，需要重新 \`startASR()\`。
 `,
 
   usage: `
-<button type="button" class="action-btn action-btn--primary" data-guide-replay>重看教学引导</button>
+<button type="button" class="action-btn action-btn--primary" data-guide-replay>重看引导提示</button>
 
 ## 使用说明
 
-本教学系统用于动手体验「魔珐星云」具身智能 SDK：在左侧边栏选择功能模块，在代码编辑框修改代码，点击「执行」按钮运行，结果与日志显示在下方日志面板。
+本教学系统用于动手体验「魔珐星云」端到端具身智能 SDK（\`XingyunAvatarAgent\`）：在左侧边栏选择功能模块，在代码编辑框修改代码，点击「执行」按钮运行，结果与日志显示在下方日志面板。
 
 ### 基本流程
 
-1. **选择 Tab**：左侧边栏按「初始化 → 交互功能 → 智能体」的顺序学习
+1. **选择 Tab**：左侧边栏按「初始化 → 表达 → 感知&大脑 → 智能体Demo」的顺序学习
 2. **查看说明**：每个 Tab 顶部的文档介绍该能力的用法
 3. **编辑代码**：编辑框已预置示例代码，可直接修改
 4. **执行**：点击「执行」按钮运行，日志输出到下方面板
 5. **观察**：数字人实时响应，日志面板展示状态变化与回调
 
-> ⚠️ 「交互功能」「智能体」需要先创建实例并连接成功才能使用（侧边栏对应 Tab 会提示"需先创建连接"）。
+> ⚠️ 「表达」，以及「感知&大脑」需要先创建实例并连接成功才能使用（未连接时对应 Tab 会置灰、不可点击）。
 
 ### 代码编辑框特定用法
 
@@ -938,20 +818,18 @@ Content-Type: application/json
 
 | 占位符 | 来源 |
 |--------|------|
-| \`{{appId}}\` / \`{{appSecret}}\` | 创建实例表单 |
-| \`{{baseUrl}}\` / \`{{apiKey}}\` / \`{{modelId}}\` | 环境准备 · 大模型 |
-| \`{{asrSecretId}}\` / \`{{asrSecretKey}}\` / \`{{asrAppId}}\` / \`{{asrEngineModel}}\` | 环境准备 · 语音识别 |
+| \`{{appId}}\` / \`{{appSecret}}\` | 初始化 · 创建实例配置表单（执行时注入） |
+| \`{{gatewayServer}}\` | 初始化 · Gateway Server（保存后立即同步到代码） |
 
-未配置的占位符**保持原样**（如 \`{{appId}}\`），预置模板会检测到并用 \`log()\` 提示你先去配置。
+未配置的占位符**保持原样**（如 \`{{appId}}\`），预置模板会检测到并用 \`log()\` 提示你先去配置。\`{{gatewayServer}}\` 未配置时自动使用默认的 ttsa_v2 地址，代码中会直接显示该地址。
 
 #### 2. async 执行
 
 代码运行在 **async 上下文**中，可以直接 \`await\` 异步方法，无需手动包裹 \`async\` 函数：
 
 \`\`\`javascript
-await avatar.init({ onDownloadProgress: (p) => log('加载进度:', p + '%') });
-await wait(1);
-await avatar.speak('<speak>你好！</speak>');
+await avatar.init();
+await avatar.speak('你好！');
 \`\`\`
 
 #### 3. 预置方法
@@ -984,9 +862,10 @@ await wait(1.5);              // 等待 1.5 秒
 function buildSecondaryTab(
   id: string,
   label: string,
-  modules: SecondaryTab['modules']
+  modules: SecondaryTab['modules'],
+  requiresConnection = false
 ): SecondaryTab {
-  return { id, label, modules };
+  return { id, label, requiresConnection: requiresConnection || undefined, modules };
 }
 
 export const TAB_DEFINITIONS: PrimaryTab[] = [
@@ -1014,10 +893,10 @@ export const TAB_DEFINITIONS: PrimaryTab[] = [
       ]),
     ],
   },
-  // ===== 交互功能 =====
+  // ===== 表达 =====
   {
     id: 'interaction',
-    label: '交互功能',
+    label: '表达',
     requiresConnection: true,
     secondaryTabs: [
       buildSecondaryTab('speak', '播报', [
@@ -1025,12 +904,6 @@ export const TAB_DEFINITIONS: PrimaryTab[] = [
         { type: 'code', id: 'speak', config: { defaultCode: CODE_TEMPLATES.speakNormal } },
         { type: 'actions', id: 'speak', config: { buttons: SPEAK_ACTIONS } },
         { type: 'log', id: 'speak-log' },
-      ]),
-      buildSecondaryTab('ssml', 'SSML', [
-        { type: 'docs', id: 'ssml-docs', config: { content: DOCS.ssml, title: 'SSML 基础' } },
-        { type: 'code', id: 'ssml', config: { defaultCode: CODE_TEMPLATES.ssmlBreak } },
-        { type: 'actions', id: 'ssml', config: { buttons: SSML_ACTIONS } },
-        { type: 'log', id: 'ssml-log' },
       ]),
       buildSecondaryTab('ka', 'KA', [
         { type: 'docs', id: 'ka-docs', config: { content: DOCS.ka, title: '关键动作' } },
@@ -1076,31 +949,43 @@ export const TAB_DEFINITIONS: PrimaryTab[] = [
       ]),
     ],
   },
-  // ===== 智能体 =====
+  // ===== 感知&大脑 =====
   {
     id: 'agent',
-    label: '智能体',
+    label: '感知&大脑',
     requiresConnection: true,
     secondaryTabs: [
-      buildSecondaryTab('agent-architecture', '智能体构成', [
-        { type: 'docs', id: 'agent-architecture-docs', config: { content: DOCS.agentArchitecture, title: '智能体构成' } },
-      ]),
-      buildSecondaryTab('agent-prepare', '环境准备', [
-        { type: 'docs', id: 'agent-prepare-docs', config: { content: DOCS.agentPrepare, title: '环境准备' } },
-        { type: 'config', id: 'agent-config-form' },
-        { type: 'log', id: 'agent-prepare-log' },
+      buildSecondaryTab('agent-init', '初始化', [
+        { type: 'docs', id: 'agent-init-docs', config: { content: DOCS.agentInit, title: '初始化' } },
+        { type: 'code', id: 'agent-init', config: { defaultCode: CODE_TEMPLATES.agentCallbacks } },
+        { type: 'actions', id: 'agent-init', config: { buttons: AGENT_INIT_ACTIONS } },
+        { type: 'log', id: 'agent-init-log' },
       ]),
       buildSecondaryTab('agent-text', '文本对话', [
         { type: 'docs', id: 'agent-text-docs', config: { content: DOCS.agentText, title: '文本对话' } },
         { type: 'code', id: 'agent-text', config: { defaultCode: CODE_TEMPLATES.agentTextChat } },
         { type: 'actions', id: 'agent-text', config: { buttons: AGENT_TEXT_ACTIONS } },
         { type: 'log', id: 'agent-text-log' },
-      ]),
+      ], true),
       buildSecondaryTab('agent-voice', '语音对话', [
         { type: 'docs', id: 'agent-voice-docs', config: { content: DOCS.agentVoice, title: '语音对话' } },
-        { type: 'code', id: 'agent-voice', config: { defaultCode: CODE_TEMPLATES.agentVoiceChat } },
+        { type: 'code', id: 'agent-voice', config: { defaultCode: CODE_TEMPLATES.agentVoiceStart } },
         { type: 'actions', id: 'agent-voice', config: { buttons: AGENT_VOICE_ACTIONS } },
         { type: 'log', id: 'agent-voice-log' },
+      ], true),
+    ],
+  },
+  // ===== 智能体 Demo =====
+  {
+    id: 'agent-demo',
+    label: '智能体Demo',
+    requiresConnection: false,
+    requiresConfig: true, // 依赖「初始化」保存的 AppId / AppSecret，未配置时置灰
+    secondaryTabs: [
+      buildSecondaryTab('demo', 'Demo', [
+        { type: 'code', id: 'demo', config: { defaultCode: CODE_TEMPLATES.demoHtml } },
+        { type: 'actions', id: 'demo', config: { buttons: DEMO_ACTIONS } },
+        { type: 'log', id: 'demo-log' },
       ]),
     ],
   },

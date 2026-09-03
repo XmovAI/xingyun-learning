@@ -2,22 +2,15 @@
 // Central State Store — Simple reactive store
 // ============================================
 
-import type { AppState, PrimaryTabId, LogEntry, TabState, AgentConfig } from '../types';
+import type { AppState, PrimaryTabId, LogEntry, TabState } from '../types';
 import { isThemeMode } from '../types';
 
 type Listener = (state: AppState) => void;
 
 const STORAGE_KEY = 'xingyun_teaching_state';
 
-const DEFAULT_AGENT_CONFIG: AgentConfig = {
-  baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-  apiKey: '',
-  modelId: 'doubao-seed-2-0-mini-260428',
-  asrSecretId: '',
-  asrSecretKey: '',
-  asrAppId: '',
-  asrEngineModel: '16k_zh',
-};
+/** Agent 端到端会话接口地址（ttsa_v2）。未在初始化面板配置时使用该默认值。 */
+export const DEFAULT_GATEWAY = 'https://nebula-agent.xingyun3d.com/user/v1/ttsa_v2/session';
 
 function loadPersistedState(): Partial<AppState> {
   try {
@@ -28,11 +21,25 @@ function loadPersistedState(): Partial<AppState> {
       tabStates: data.tabStates || {},
       theme: isThemeMode(data.theme) ? data.theme : 'system',
       zoom: typeof data.zoom === 'number' ? data.zoom : 1,
-      agentConfig: data.agentConfig,
     };
   } catch {
     return {};
   }
+}
+
+/**
+ * Escape a configured value so it is safe to splice into a single-quoted JS
+ * string literal inside a template (e.g. `const ASR_CONFIG = '...'`).
+ * JSON config strings are free-text; users may paste pretty-printed JSON with
+ * literal newlines, and values may contain quotes or backslashes.
+ */
+function escapeJsString(s: string): string {
+  return s
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '')
+    .replace(/\n/g, '\\n')
+    .replace(/\t/g, '\\t');
 }
 
 function createInitialState(): AppState {
@@ -41,6 +48,7 @@ function createInitialState(): AppState {
     sdkConnected: false,
     sdkStatus: 'offline',
     avatar: null,
+    demoPreviewActive: false,
     activePrimaryTab: 'init',
     activeSecondaryTab: '',
     drawerOpen: false,
@@ -49,12 +57,10 @@ function createInitialState(): AppState {
     zoom: persisted.zoom ?? 1,
     tabStates: persisted.tabStates || {},
     logEntries: [],
-    agentConfig: persisted.agentConfig || DEFAULT_AGENT_CONFIG,
   };
 }
 
 /** localStorage keys for persisted credentials. */
-export const AGENT_CONFIG_STORAGE_KEY = 'xingyun_agent_config';
 export const INIT_CONFIG_STORAGE_KEY = 'xingyun_init_config';
 
 class Store {
@@ -90,46 +96,63 @@ class Store {
     this.set({ tabStates });
   }
 
-  // --- AgentConfig Helpers ---
+  // --- Init Config Helpers ---
 
-  getAgentConfig(): AgentConfig {
-    return { ...this.state.agentConfig };
+  /**
+   * 当前保存的 gatewayServer；未配置时回退到默认 ttsa_v2 地址。
+   */
+  getGatewayServer(): string {
+    try {
+      const init = JSON.parse(localStorage.getItem(INIT_CONFIG_STORAGE_KEY) || '{}');
+      return init.gatewayServer || DEFAULT_GATEWAY;
+    } catch {
+      return DEFAULT_GATEWAY;
+    }
   }
 
-  setAgentConfig(partial: Partial<AgentConfig>) {
-    const updated = { ...this.state.agentConfig, ...partial };
-    this.set({ agentConfig: updated });
-    // 同步写入独立键（兼容旧模板直接读 localStorage 的方式，供调试排查）
+  /**
+   * 是否已保存 appId + appSecret（判定「初始化 → 创建实例」配置是否就绪）。
+   */
+  hasInitConfig(): boolean {
     try {
-      localStorage.setItem(AGENT_CONFIG_STORAGE_KEY, JSON.stringify(updated));
-    } catch {}
+      const init = JSON.parse(localStorage.getItem(INIT_CONFIG_STORAGE_KEY) || '{}');
+      return !!(init.appId && init.appSecret);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 展示层同步：把代码中 gatewayServer 的值（占位符或旧字面量）替换为表单当前值，
+   * 使创建实例代码与「Gateway Server」输入项实时一致。
+   * appId/appSecret 属于密钥，仍保持占位符，仅在「执行」时注入。
+   */
+  resolveGatewayDisplay(code: string): string {
+    const gateway = escapeJsString(this.getGatewayServer());
+    return code.replace(/(gatewayServer\s*:\s*['"])[^'\n]*?(['"])/g, `$1${gateway}$2`);
   }
 
   /**
    * Replace all {{placeholder}} tokens in code with configured values.
-   * Agent config comes from the store (with product defaults); appId/appSecret
-   * come from the init-config storage. Unconfigured values are left as-is so
-   * templates can detect them and show a friendly error.
+   * appId / appSecret / gatewayServer come from the init-config storage;
+   * gatewayServer falls back to the default ttsa_v2 endpoint.
+   * Unconfigured values are left as-is so templates can detect them and show a
+   * friendly error.
    */
   injectPlaceholders(code: string): string {
-    const cfg = this.getAgentConfig();
     const values: Record<string, string> = {
-      baseUrl: cfg.baseUrl,
-      apiKey: cfg.apiKey,
-      modelId: cfg.modelId,
-      asrSecretId: cfg.asrSecretId,
-      asrSecretKey: cfg.asrSecretKey,
-      asrAppId: cfg.asrAppId,
-      asrEngineModel: cfg.asrEngineModel,
+      gatewayServer: '',
     };
     try {
       const init = JSON.parse(localStorage.getItem(INIT_CONFIG_STORAGE_KEY) || '{}');
       values.appId = init.appId || '';
       values.appSecret = init.appSecret || '';
     } catch {}
+    values.gatewayServer = this.getGatewayServer();
     let result = code;
     for (const [key, value] of Object.entries(values)) {
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value || `{{${key}}}`);
+      const safe = escapeJsString(value);
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value ? safe : `{{${key}}}`);
     }
     return result;
   }
@@ -168,7 +191,6 @@ class Store {
         tabStates: this.state.tabStates,
         theme: this.state.theme,
         zoom: this.state.zoom,
-        agentConfig: this.state.agentConfig,
       }));
     } catch {}
   }

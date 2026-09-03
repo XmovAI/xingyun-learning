@@ -21,7 +21,8 @@
   padding: 20px 10px;
   font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--text-secondary);
+  /* 可用（含未选中）态：亮色，一眼可点；禁用态单独走 --text-muted + 低透明度 */
+  color: var(--text-primary);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -42,13 +43,16 @@
   background: var(--accent-glow);
 }
 
-.sidebar-tab--disabled {
+/* 禁用样式只在「非当前」tab 上生效：当前 tab 已经打开，
+   连接/配置中途掉了也不能把自己"熄灭"成灰色。 */
+.sidebar-tab--disabled:not(.sidebar-tab--active) {
+  /* 禁用 = 明显"熄掉"：灰 + 深度降低透明度，与可用态完全区分 */
   color: var(--text-muted);
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.35;
 }
 
-.sidebar-tab--disabled::after {
+.sidebar-tab--disabled:not(.sidebar-tab--active)::after {
   content: attr(data-tooltip);
   position: absolute;
   left: calc(-100% - 12px);
@@ -68,7 +72,7 @@
   z-index: var(--z-tooltip);
 }
 
-.sidebar-tab--disabled:hover::after {
+.sidebar-tab--disabled:not(.sidebar-tab--active):hover::after {
   opacity: 1;
 }
 

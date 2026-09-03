@@ -33,7 +33,7 @@ class AvatarManager {
     this.connected = false;
   }
 
-  async init(onDownloadProgress?: (progress: number) => void): Promise<void> {
+  async init(): Promise<void> {
     if (!this.avatar) {
       store.log('error', '请先创建实例');
       throw new Error('No avatar instance');
@@ -43,16 +43,12 @@ class AvatarManager {
     store.set({ sdkStatus: 'connecting' });
 
     try {
-      await this.avatar.init({
-        onDownloadProgress: (progress: number) => {
-          store.log('log', `加载进度: ${progress}%`);
-          onDownloadProgress?.(progress);
-        },
-      });
+      // E2E SDK init() 参数可选、无需进度回调；返回时 Agent 即为 running
+      await this.avatar.init();
 
       this.connected = true;
       store.set({ sdkConnected: true, sdkStatus: 'online' });
-      store.log('info', '连接成功！');
+      store.log('info', 'Agent 初始化完成（running）');
     } catch (err: any) {
       this.connected = false;
       store.set({ sdkConnected: false, sdkStatus: 'offline' });

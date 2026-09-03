@@ -4,6 +4,7 @@
 
 import { store } from '../state/app-state';
 import { avatarManager } from './avatar-manager';
+import { updateLoadingProgress } from '../components/avatar-panel';
 
 /**
  * Execute code in a closure-based sandbox.
@@ -11,9 +12,11 @@ import { avatarManager } from './avatar-manager';
  * Each execution runs in its own async IIFE, so `const` declarations
  * don't conflict across re-executions.
  *
- * When `new XmovAvatar(...)` is detected in the code, the resulting
- * instance is automatically registered with avatarManager, and the
- * `onStatusChange` callback is wrapped to sync connection state to the store.
+ * When `new XingyunAvatarAgent(...)` is detected in the code, the resulting
+ * instance is automatically registered with avatarManager, and its connection
+ * state is synced to the store via two channels:
+ *   - inherited top-level `onStatusChange`（数字枚举: 0 在线 / 1 离线 ...）
+ *   - E2E `agentCallbacks.onAgentStateChange`（字符串状态，以 running 为可用态）
  *
  * Injected: avatar (current instance), log(), wait()
  */
@@ -38,33 +41,72 @@ export async function executeCode(code: string): Promise<void> {
   const wait = (seconds: number) =>
     new Promise<void>(resolve => setTimeout(resolve, seconds * 1000));
 
-  // Intercept `new XmovAvatar(...)`:
-  // 1. Register instance with avatarManager
-  // 2. Wrap onStatusChange to sync connection state
-  const XmovAvatarCtor = (window as any).XmovAvatar;
+  const syncConnected = (connected: boolean, status?: string) => {
+    if (connected) {
+      avatarManager.setConnected(true);
+      store.set({ sdkConnected: true, sdkStatus: status || 'online' });
+    } else {
+      avatarManager.setConnected(false);
+      store.set({ sdkConnected: false, sdkStatus: 'offline' });
+    }
+  };
 
-  if (XmovAvatarCtor) {
-    (window as any).XmovAvatar = function(options: any) {
-      // Wrap onStatusChange to sync sdkConnected
-      const userCallback = options?.onStatusChange;
+  // Intercept `new XingyunAvatarAgent(...)`:
+  // 1. Register instance with avatarManager
+  // 2. Wrap onStatusChange + agentCallbacks.onAgentStateChange to sync connection state
+  const AgentCtor = (window as any).XingyunAvatarAgent;
+
+  if (AgentCtor) {
+    (window as any).XingyunAvatarAgent = function(options: any) {
+      // Wrap inherited numeric status callback
+      const userStatus = options?.onStatusChange;
       options = { ...options };
       options.onStatusChange = (status: any) => {
         // SDK status: 0 = online, 1 = offline, 4 = close, 5 = visible, 6 = invisible
         if (status === 0 || status === 'online' || status === 'visible') {
-          avatarManager.setConnected(true);
-          store.set({ sdkConnected: true, sdkStatus: 'online' });
+          syncConnected(true);
         } else if (status === 1 || status === 'offline' || status === 'close') {
-          avatarManager.setConnected(false);
-          store.set({ sdkConnected: false, sdkStatus: 'offline' });
+          syncConnected(false);
         }
-        // Call user's original callback
-        if (typeof userCallback === 'function') {
-          userCallback(status);
-        }
+        if (typeof userStatus === 'function') userStatus(status);
       };
 
-      const instance = new XmovAvatarCtor(options);
+      // Wrap E2E agent state callback（字符串状态）
+      const callbacks = { ...(options?.agentCallbacks || {}) };
+      const userAgentState = callbacks.onAgentStateChange;
+      callbacks.onAgentStateChange = (state: string) => {
+        // AgentState: idle | initializing | ready | running | reconnecting | stopped | destroyed | failed
+        if (state === 'running') {
+          syncConnected(true);
+        } else if (state === 'initializing' || state === 'reconnecting') {
+          store.set({ sdkConnected: false, sdkStatus: 'connecting' });
+        } else if (state === 'stopped' || state === 'destroyed' || state === 'failed') {
+          syncConnected(false);
+        }
+        if (typeof userAgentState === 'function') userAgentState(state);
+      };
+      options.agentCallbacks = callbacks;
+
+      const instance = new AgentCtor(options);
       avatarManager.setAvatar(instance);
+
+      // Wrap init: 把 onDownloadProgress 同时接到面板进度条
+      // （bar 的 fill 宽度 + 「加载中... X%」文本），每次 init 开始时归零。
+      const origInit = instance.init?.bind(instance);
+      if (typeof origInit === 'function') {
+        instance.init = async (params?: any) => {
+          const userCb = params?.onDownloadProgress;
+          const next = params && typeof params === 'object' ? { ...params } : {};
+          if (typeof userCb === 'function') {
+            next.onDownloadProgress = (p: number) => {
+              updateLoadingProgress(Math.min(100, Math.max(0, p)));
+              userCb(p);
+            };
+          }
+          updateLoadingProgress(0);
+          return origInit(next);
+        };
+      }
 
       // Wrap destroy to auto-cleanup avatarManager state
       const origDestroy = instance.destroy.bind(instance);
@@ -78,7 +120,7 @@ export async function executeCode(code: string): Promise<void> {
 
       return instance;
     };
-    (window as any).XmovAvatar.prototype = XmovAvatarCtor.prototype;
+    (window as any).XingyunAvatarAgent.prototype = AgentCtor.prototype;
   }
 
   try {
@@ -89,8 +131,8 @@ export async function executeCode(code: string): Promise<void> {
   } catch (err: any) {
     store.log('error', `执行错误: ${err.message || err}`);
   } finally {
-    if (XmovAvatarCtor) {
-      (window as any).XmovAvatar = XmovAvatarCtor;
+    if (AgentCtor) {
+      (window as any).XingyunAvatarAgent = AgentCtor;
     }
   }
 }

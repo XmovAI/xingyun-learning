@@ -3,6 +3,7 @@
 // ============================================
 
 import { store } from '../state/app-state';
+import { replayGuide } from './guide-tour';
 
 let lastSdkConnected = false;
 let lastSdkStatus = 'offline';
@@ -49,10 +50,11 @@ export function applyAvatarAspectRatio(ratio: string): void {
   container.style.height = `${Math.floor(h)}px`;
 }
 
-function updateStatusUI(sdkConnected: boolean, sdkStatus: string) {
+function updateStatusUI(sdkConnected: boolean, sdkStatus: string, demoPreview: boolean) {
   const dot = document.getElementById('avatar-status-dot');
   const text = document.getElementById('avatar-status-text');
   const loading = document.getElementById('avatar-loading');
+  const hint = document.getElementById('avatar-connect-hint');
   if (!dot || !text || !loading) return;
 
   dot.className = 'avatar-status-dot';
@@ -60,13 +62,21 @@ function updateStatusUI(sdkConnected: boolean, sdkStatus: string) {
     dot.classList.add('avatar-status-dot--online');
     text.textContent = '已连接';
     loading.style.display = 'none';
+    if (hint) hint.style.display = 'none';
   } else if (sdkStatus === 'connecting') {
     dot.classList.add('avatar-status-dot--connecting');
     text.textContent = '连接中...';
     loading.style.display = 'flex';
+    if (hint) hint.style.display = 'none';
+  } else if (demoPreview) {
+    // Demo 预览占用画布：不显示「查看引导提示」，角标提示预览态
+    text.textContent = '预览中';
+    loading.style.display = 'none';
+    if (hint) hint.style.display = 'none';
   } else {
     text.textContent = '未连接';
     loading.style.display = 'none';
+    if (hint) hint.style.display = 'flex';
   }
 }
 
@@ -85,14 +95,24 @@ export function createAvatarPanel(): HTMLElement {
       </div>
       <div class="avatar-loading-text" id="avatar-loading-text">加载中...</div>
     </div>
+    <div class="avatar-connect-hint" id="avatar-connect-hint">
+      <button type="button" class="avatar-connect-hint-btn" id="avatar-connect-hint-btn">查看引导提示</button>
+    </div>
   `;
 
+  // Clicking the hint button re-opens the onboarding overlay
+  panel.querySelector<HTMLButtonElement>('#avatar-connect-hint-btn')?.addEventListener('click', () => {
+    replayGuide();
+  });
+
   // Subscribe to state changes — only update DOM when values actually change
+  let lastDemoPreview = false;
   store.subscribe((state) => {
-    if (state.sdkConnected !== lastSdkConnected || state.sdkStatus !== lastSdkStatus) {
+    if (state.sdkConnected !== lastSdkConnected || state.sdkStatus !== lastSdkStatus || state.demoPreviewActive !== lastDemoPreview) {
       lastSdkConnected = state.sdkConnected;
       lastSdkStatus = state.sdkStatus;
-      updateStatusUI(state.sdkConnected, state.sdkStatus);
+      lastDemoPreview = state.demoPreviewActive;
+      updateStatusUI(state.sdkConnected, state.sdkStatus, state.demoPreviewActive);
     }
   });
 
