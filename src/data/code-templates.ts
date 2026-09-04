@@ -4,7 +4,7 @@
 
 export const CODE_TEMPLATES = {
   // --- 初始化 ---
-  createInstance: `// 创建端到端数字人（Agent）实例 —— 最简配置
+  createInstance: `// 创建端到端智能体（Agent）实例 —— 最简配置
 const APP_ID = '{{appId}}';
 const APP_SECRET = '{{appSecret}}';
 if (APP_ID.startsWith('{{') || APP_SECRET.startsWith('{{')) {
@@ -33,7 +33,7 @@ const avatar = new XingyunAvatarAgent({
   },
 });`,
 
-  createInstanceFull: `// 创建端到端数字人（Agent）实例 —— 完整配置
+  createInstanceFull: `// 创建端到端智能体（Agent）实例 —— 完整配置
 const APP_ID = '{{appId}}';
 const APP_SECRET = '{{appSecret}}';
 if (APP_ID.startsWith('{{') || APP_SECRET.startsWith('{{')) {
@@ -110,7 +110,7 @@ await avatar.destroy('user_action');`,
 
   // --- 播报 ---
   speakNormal: `// 纯文本播报
-avatar.speak('你好，我是你的数字人助手！');
+avatar.speak('你好，我是你的魔珐星云助手！');
 log('已发起播报，观察代理日志中的对话状态变化');`,
 
   speakSSML: `// SSML 播报 —— 停顿与注音示例
@@ -146,7 +146,7 @@ avatar.speak('<speak>太棒了！我们成功了！</speak>', true, true, {
 });`,
 
   // --- KA ---
-  kaAction: (action: string) => `// 关键动作: ${action} —— SSML 指令驱动数字人做手势
+  kaAction: (action: string) => `// 关键动作: ${action} —— SSML 指令驱动智能体做手势
 avatar.speak(\`
 <speak>
   大家好！
@@ -186,28 +186,28 @@ avatar.speak('<speak>${text}</speak>', true, true, {
 // 再次调用 → 恢复渲染 + 后端恢复推送
 avatar.switchInvisibleMode();`,
 
-  invisibleVisible: `// 纯 UI 隐藏/显示数字人（不影响渲染和后端推送）
+  invisibleVisible: `// 纯 UI 隐藏/显示智能体（不影响渲染和后端推送）
 avatar.changeAvatarVisible(false);   // 隐藏 Canvas
 // avatar.changeAvatarVisible(true); // 重新显示`,
 
   // --- 状态切换 ---
-  stateIdle: `// 空闲状态 — 数字人停止当前动作，进入静默待机动画
+  stateIdle: `// 空闲状态 — 智能体停止当前动作，进入静默待机动画
 avatar.idle();`,
 
-  stateInteractiveIdle: `// 交互空闲 — 表示数字人处于可交互的等待状态
+  stateInteractiveIdle: `// 交互空闲 — 表示智能体处于可交互的等待状态
 avatar.interactiveidle();`,
 
-  stateListen: `// 聆听状态 — 表示数字人正在聆听用户输入
+  stateListen: `// 聆听状态 — 表示智能体正在聆听用户输入
 avatar.listen();`,
 
   stateInterrupt: `// 调用 interrupt() 打断当前播报（enableClientInterrupt 默认开启），返回打断耗时（ms）
 // interrupt() 不会自动关闭 ASR / 麦克风；要结束监听请另调 stopASR()
-avatar.speak('<speak>这是一段较长的语音，用来演示打断效果。数字人将持续播报这段话，请在播放过程中观察打断。</speak>');
+avatar.speak('<speak>这是一段较长的语音，用来演示打断效果。智能体将持续播报这段话，请在播放过程中观察打断。</speak>');
 await wait(2);
 const latency = avatar.interrupt('user');
 log('打断耗时:', latency, 'ms');
 await wait(1);
-avatar.speak('<speak>这是一段较长的语音，用来演示打断效果。数字人将持续播报这段话，请在播放过程中观察打断。</speak>');
+avatar.speak('<speak>这是一段较长的语音，用来演示打断效果。智能体将持续播报这段话，请在播放过程中观察打断。</speak>');
 await wait(2);
 avatar.speak('<speak>开始第二段话。</speak>');`,
 
@@ -221,7 +221,7 @@ avatar.changeWalkConfig({
 });
 log('点位定义完成');`,
 
-  walkGo: `// 触发行走 — SSML walk 指令让数字人移动到目标点位
+  walkGo: `// 触发行走 — SSML walk 指令让智能体移动到目标点位
 avatar.speak(\`
 <speak>
   <ue4event><type>walk</type><data><target>B</target></data></ue4event>
@@ -350,7 +350,7 @@ const avatar = new XingyunAvatarAgent({
     base_url: 'https://你的LLM服务地址',
     api_key: '...',
     model: 'your-model',
-    preset: '你是魔珐星云的数字人助手，请用简短友好的语气回复。',
+    preset: '你是魔珐星云小助手，请用简短友好的语气回复。',
     history_length: 5,
     extra_body: {},
   },
@@ -370,7 +370,7 @@ log('初始化完成，Agent 状态:', avatar.getAgentState());`,
 
   // --- 感知&大脑: 文本对话 ---
   agentTextChat: `// =============================================
-// 端到端文本对话：用户输入 → Brain → 数字人播报
+// 端到端文本对话：用户输入 → Brain → 实时播报
 // =============================================
 
 if (avatar.getAgentState() !== 'running') {
@@ -379,7 +379,7 @@ if (avatar.getAgentState() !== 'running') {
 }
 
 // 1. 获取用户输入
-const userInput = prompt('请输入你想对数字人说的话：');
+const userInput = prompt('请输入你想对具身智能说的话：');
 if (!userInput) {
   log('warn', '已取消输入');
   return;
@@ -416,7 +416,7 @@ log('已停止录音，最终识别文本见 onASRResult 日志');`,
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>智能体 Demo</title>
 <style>
-  /* ---------- 基础布局：主体为数字人渲染画布 ---------- */
+  /* ---------- 基础布局：主体为具身智能渲染画布 ---------- */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
@@ -570,7 +570,7 @@ log('已停止录音，最终识别文本见 onASRResult 日志');`,
 </style>
 </head>
 <body>
-  <!-- 数字人渲染画布：data-ratio 与内联 --rw/--rh 控制横竖屏（16:9 横屏 / 9:16 竖屏） -->
+  <!-- 具身智能渲染画布：data-ratio 与内联 --rw/--rh 控制横竖屏（16:9 横屏 / 9:16 竖屏） -->
   <div id="stage">
     <div id="avatar-container" data-ratio="16/9" style="--rw:16; --rh:9;"></div>
     <!-- init 加载进度浮层 -->
@@ -636,7 +636,7 @@ log('已停止录音，最终识别文本见 onASRResult 日志');`,
       loadingText.textContent = '加载中 ' + v.toFixed(2) + '%'; // 保留两位小数
     }
 
-    /* ============ 创建数字人实例（最简配置） ============ */
+    /* ============ 创建具身智能实例（最简配置） ============ */
     /* destroy 之后实例不可复用于再次 init，故每次连接都新建实例 */
     let avatar = null;
     function createAvatar() {
@@ -771,7 +771,7 @@ log('已停止录音，最终识别文本见 onASRResult 日志');`,
       if (!text || !connected) return;
       input.value = '';
       btnSend.classList.remove('show');
-      try { await avatar.ask(text); }    // 文本 → Brain → 数字人播报
+      try { await avatar.ask(text); }    // 文本 → Brain → 实时播报
       catch (e) { console.error(e); }
     }
 

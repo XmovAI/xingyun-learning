@@ -22,7 +22,7 @@ interface GuideStep {
 const GUIDE_STEPS: GuideStep[] = [
   {
     title: '欢迎使用魔珐星云 SDK 教学',
-    body: '这是一个动手实践平台，带你从零认识「魔珐星云 XingyunAvatarAgent」端到端 SDK——创建数字人实例、连接与渲染、SSML 播报、动作表情控制，最后搭一个能对话的具身智能体。',
+    body: '这是一个动手实践平台，带你从零认识「魔珐星云 XingyunAvatarAgent」端到端 SDK——创建具身交互智能体实例、连接与渲染、SSML 播报、动作表情控制，最后搭一个能对话的具身智能体。',
   },
   {
     target: '.sidebar',
@@ -32,8 +32,8 @@ const GUIDE_STEPS: GuideStep[] = [
   },
   {
     target: '.avatar-panel',
-    title: '数字人展示区',
-    body: '这里是主舞台，3D 数字人会在这里实时渲染。执行代码后的对话、动作、表情，都会在这一侧直观呈现。',
+    title: '具身智能体展示区',
+    body: '这里是主舞台，3D 具身智能体会在这里实时渲染。执行代码后的对话、动作、表情，都会在这一侧直观呈现。',
     note: '左上角的圆点显示连接状态：灰色=未连接，黄色=连接中，绿色=已连接。',
   },
   {

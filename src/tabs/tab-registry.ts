@@ -90,23 +90,23 @@ import XingyunAvatarAgent from "@xmov/avatar/agent";
 
 ### 4. 核心能力概览
 
-- **端到端具身智能体**：在数字人渲染之上闭环「感知 → 认知 → 表达」（ASR 语音识别 + LLM Brain 对话 + 数字人播报）
+- **端到端具身智能体**：在具身智能渲染之上闭环「感知 → 认知 → 表达」（ASR 语音识别 + LLM Brain 对话 + 实时播报）
 - **文本对话**：\`ask()\` 发起 Brain 对话，支持多轮问答
 - **语音交互**：\`startASR()\` / \`stopASR()\` 采集麦克风并由平台 ASR 识别，识别结果实时回调
 - **直接播报**：\`speak()\` 支持 SSML、动作、情绪、Widget
-- **实时 3D 数字人渲染**：基于 WebGL 的 GPU 加速渲染，支持面部表情、口型、骨骼动画的实时驱动
+- **实时 3D 具身智能渲染**：基于 WebGL 的 GPU 加速渲染，支持面部表情、口型、骨骼动画的实时驱动
 - **状态与回调和断线重连**：Agent / ASR / 对话状态机 + 自动重连
 `,
 
-  createInstance: `## 创建数字人实例
+  createInstance: `## 创建具身智能实例
 
-使用 \`new XingyunAvatarAgent(options)\` 创建**端到端数字人（Agent）**实例。构造函数接受一个 \`options\` 配置对象。
+使用 \`new XingyunAvatarAgent(options)\` 创建**端到端智能体（Agent）**实例。构造函数接受一个 \`options\` 配置对象。
 
 ### 必填参数
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| \`containerId\` | \`string\` | 数字人容器 CSS 选择器，如 \`#avatar-container\` |
+| \`containerId\` | \`string\` | 具身智能容器 CSS 选择器，如 \`#avatar-container\` |
 | \`appId\` | \`string\` | 应用 ID，由平台分配 |
 | \`appSecret\` | \`string\` | 应用密钥，由平台分配（浏览器侧签名凭证） |
 | \`gatewayServer\` | \`string\` | Agent 会话接口完整地址（**ttsa_v2 版本**） |
@@ -159,7 +159,7 @@ Agent 专属回调组，与旧版顶层回调并存：
 
 ### init() — 初始化
 
-初始化 Agent：下载数字人资源、建立会话与连接。参数可选（\`onDownloadProgress\` 上报 0–100 进度）。**Promise 返回时 Agent 即为 \`running\`**，可直接发起对话 / ASR：
+初始化 Agent：下载智能体资源、建立会话与连接。参数可选（\`onDownloadProgress\` 上报 0–100 进度）。**Promise 返回时 Agent 即为 \`running\`**，可直接发起对话 / ASR：
 
 \`\`\`javascript
 await avatar.init();
@@ -170,7 +170,7 @@ log('Agent 状态:', avatar.getAgentState());   // running
 
 ### destroy() — 销毁
 
-销毁实例，释放麦克风、连接与数字人资源。调用后实例不可再初始化或复用：
+销毁实例，释放麦克风、连接与智能体资源。调用后实例不可再初始化或复用：
 
 \`\`\`javascript
 await avatar.destroy('user_action');
@@ -256,15 +256,15 @@ log('打断耗时:', latency, 'ms');
 
   stateSwitch: `## 状态切换
 
-数字人支持多种行为状态。以下状态方法在端到端 SDK 中同样可用（调用后会同步通知服务端）。
+具身智能体支持多种行为状态。以下状态方法在端到端 SDK 中同样可用（调用后会同步通知服务端）。
 
 ### 状态一览
 
 | 方法 | 状态 | 说明 |
 |------|------|------|
 | \`idle()\` | 空闲 Idle | 停止当前动作，进入静默待机动画 |
-| \`interactiveidle()\` | 交互空闲 Interactive Idle | 表示数字人处于可交互的等待状态 |
-| \`listen()\` | 聆听 Listen | 表示数字人正在聆听用户输入 |
+| \`interactiveidle()\` | 交互空闲 Interactive Idle | 表示智能体处于可交互的等待状态 |
+| \`listen()\` | 聆听 Listen | 表示智能体正在聆听用户输入 |
 | \`speak(...)\` | 说话 Speak | 播报（详见「播报」Tab） |
 
 ### 典型流程
@@ -302,9 +302,9 @@ log('Agent:', agentState, 'ASR:', asrState, '状态:', status, '渲染:', render
 
   ka: `## 关键动作 (KA)
 
-KA = Key Action，数字人的预设肢体动作。通过 SSML 中的 \`<ue4event>\` 标签嵌入，数字人会在播报**对应文本的同时**做出动作。
+KA = Key Action，智能体的预设肢体动作。通过 SSML 中的 \`<ue4event>\` 标签嵌入，智能体会在播报**对应文本的同时**做出动作。
 
-> 关键动作不是客户端 API，而是通过 SSML 标签下发给**服务端**处理。服务端在合成语音的同时驱动数字人做出肢体动作。端到端 SDK 同样支持该能力，通过 \`speak()\` 交互式驱动。
+> 关键动作不是客户端 API，而是通过 SSML 标签下发给**服务端**处理。服务端在合成语音的同时驱动智能体做出肢体动作。端到端 SDK 同样支持该能力，通过 \`speak()\` 交互式驱动。
 
 ### 两种类型
 
@@ -341,7 +341,7 @@ KA = Key Action，数字人的预设肢体动作。通过 SSML 中的 \`<ue4even
 
 ### 时间线规则
 
-动作标签放在**哪句文本前面**，数字人就**边说那句话边做动作**。文本说完，动作也结束。
+动作标签放在**哪句文本前面**，智能体就**边说那句话边做动作**。文本说完，动作也结束。
 
 > ⚠️ 距离过近的 ka 会被忽略。
 
@@ -384,7 +384,7 @@ avatar.speak(ssml);
 **显式传参**示例：
 
 \`\`\`javascript
-// 文本说"好悲伤"，但 emotion 传了 happy → 数字人会开心地说这句话
+// 文本说"好悲伤"，但 emotion 传了 happy → 智能体会开心地说这句话
 avatar.speak('<speak>好悲伤啊...</speak>', true, true, { emotion: 'happy' });
 \`\`\`
 
@@ -431,7 +431,7 @@ avatar.speak(ssml, true, true, { emotion: 'happy' });
 
   invisible: `## 隐身模式
 
-隐身模式用于在不需要数字人画面时暂停渲染、节省 CPU/GPU 资源。端到端 SDK 提供两种可见性 API：
+隐身模式用于在不需要智能体画面时暂停渲染、节省 CPU/GPU 资源。端到端 SDK 提供两种可见性 API：
 
 ### 两种可见性 API 对比
 
@@ -464,7 +464,7 @@ avatar.changeAvatarVisible(true);   // 重新显示
 
   walk: `## 行走动画
 
-行走动画允许数字人在水平方向上移动位置，适用于虚拟展厅、引导讲解等场景。端到端 SDK 支持配置点位，并在播报 SSML 中触发行走。
+行走动画允许智能体在水平方向上移动位置，适用于虚拟展厅、引导讲解等场景。端到端 SDK 支持配置点位，并在播报 SSML 中触发行走。
 
 > ⚠️ 行走属于**定制化功能**，需要角色制作时预置行走动画数据。
 
@@ -509,7 +509,7 @@ avatar.changeWalkConfig({
 
 ### 边走边说
 
-行走标签放在文本前面，数字人会边走边播报紧随其后的句子：
+行走标签放在文本前面，智能体会边走边播报紧随其后的句子：
 
 \`\`\`javascript
 const ssml = \`
@@ -524,17 +524,17 @@ avatar.speak(ssml);
 
 \`\`\`javascript
 onWalkStateChange(state) {
-  if (state === 'start') console.log('数字人开始行走');
-  if (state === 'end') console.log('数字人到达目的地');
+  if (state === 'start') console.log('智能体开始行走');
+  if (state === 'end') console.log('智能体到达目的地');
 }
 \`\`\`
 
-> ⚠️ 必须先调用 \`changeWalkConfig()\` 配置好点位，再发行走 SSML。\`target\` 必须在 \`walk_points\` 中存在；\`changeWalkConfig()\` 仅在数字人**非行走状态**下生效，正在行走时调用不生效。
+> ⚠️ 必须先调用 \`changeWalkConfig()\` 配置好点位，再发行走 SSML。\`target\` 必须在 \`walk_points\` 中存在；\`changeWalkConfig()\` 仅在智能体**非行走状态**下生效，正在行走时调用不生效。
 `,
 
   layout: `## 布局配置
 
-Layout 配置控制数字人在容器中的位置和大小。可静态传入 \`config.layout\` 构造参数，或运行时调用 \`changeLayout()\` 动态修改。
+Layout 配置控制智能体在容器中的位置和大小。可静态传入 \`config.layout\` 构造参数，或运行时调用 \`changeLayout()\` 动态修改。
 
 ### Layout 接口
 
@@ -555,7 +555,7 @@ interface Layout {
 
 | 格式 | 示例 | 说明 |
 |------|------|------|
-| 数字 | \`0.4\` | 基于素材分辨率的缩放比例。如 1080×1920 下 \`scale=0.4\` → 数字人大小为 432×768 |
+| 数字 | \`0.4\` | 基于素材分辨率的缩放比例。如 1080×1920 下 \`scale=0.4\` → 智能体大小为 432×768 |
 | vh 字符串 | \`"40vh"\` | 相对容器高度的缩放。如容器高 810、素材高 1920，\`"40vh"\` → 实际 scale ≈ 0.169 |
 
 ### 运行时动态修改
@@ -598,7 +598,7 @@ const avatar = new XingyunAvatarAgent({
 
   widget: `## Widget 自定义渲染
 
-Widget 机制允许在数字人播报过程中渲染图片、视频、链接等多媒体元素。通过构造参数 \`onWidgetEvent\` / \`proxyWidget\` 接收 Widget 事件并自行渲染。
+Widget 机制允许在智能体播报过程中渲染图片、视频、链接等多媒体元素。通过构造参数 \`onWidgetEvent\` / \`proxyWidget\` 接收 Widget 事件并自行渲染。
 
 ### 两种回调方法
 
@@ -695,7 +695,7 @@ proxyWidget: {
 
 1. **回调函数**：在下方代码编辑器填充 ASR / LLM 相关回调（\`onASRStateChange\` / \`onASRResult\` / \`onLLMResponse\` 等），并入 \`agentCallbacks\`
 2. **自定义配置**：填充 \`asr_config\` / \`brain_config\` 示例（仅测试 / 私有化部署环境使用）
-3. **重新加载**：以「创建实例」tab 的代码为基础，合并当前编辑器中的示例代码完成实例创建配置；若当前为连接态，先销毁已有实例，再执行实例创建 + init，完成数字人重连
+3. **重新加载**：以「创建实例」tab 的代码为基础，合并当前编辑器中的示例代码完成实例创建配置；若当前为连接态，先销毁已有实例，再执行实例创建 + init，完成智能体重连
 
 ### ASR 独立调用
 
@@ -718,7 +718,7 @@ proxyWidget: {
 
   agentText: `## 文本对话
 
-端到端 SDK 将文本对话集成在 \`ask()\` 中：**输入文本 → Brain 对话 → 数字人播报**，无需自己拼接 LLM HTTP 请求。
+端到端 SDK 将文本对话集成在 \`ask()\` 中：**输入文本 → Brain 对话 → 实时播报**，无需自己拼接 LLM HTTP 请求。
 
 ### 基本用法
 
@@ -732,7 +732,7 @@ await avatar.ask('介绍一下这个产品');
 
 | 方法 | 是否走 Brain | 适用场景 |
 |------|-------------|----------|
-| \`ask()\` | 是 | 问答、多轮交互、数字人自主加工内容 |
+| \`ask()\` | 是 | 问答、多轮交互、智能体自主加工内容 |
 | \`speak()\` | 否 | 固定话术、把外部系统结论直接说出来 |
 
 ### 多轮对话
@@ -754,7 +754,7 @@ Brain 会根据 \`brain_config.history_length\` 保留多轮上下文；每轮 \
 
   agentVoice: `## 语音对话
 
-端到端 SDK 的语音交互由**平台 ASR** 完成：**麦克风录音（startASR）→ 平台识别 → 识别结束自动进入 Brain → 数字人播报**。不需要自己引入第三方语音识别 SDK。
+端到端 SDK 的语音交互由**平台 ASR** 完成：**麦克风录音（startASR）→ 平台识别 → 识别结束自动进入 Brain → 实时播报**。不需要自己引入第三方语音识别 SDK。
 
 本 tab 提供「开始录音」/「停止录音」/「执行」三个按钮：前两者分别在编辑器中填充对应的示例代码，点击「执行」运行即可。
 
@@ -774,12 +774,12 @@ await avatar.stopASR();
 
 1. **必须在用户操作中调用 \`startASR()\`**（如按钮点击、本页「执行」按钮触发的代码），浏览器才会允许麦克风权限
 2. 页面须运行在 HTTPS 或 localhost
-3. 录音期间可伴随数字人播报，\`interrupt(type)\` 只打断播报、不会自动关闭 ASR；要结束监听需再调用 \`stopASR()\`
+3. 录音期间可伴随智能体播报，\`interrupt(type)\` 只打断播报、不会自动关闭 ASR；要结束监听需再调用 \`stopASR()\`
 4. 识别是**异步回调**驱动：参考日志面板的 \`onASRStateChange\`（listening / stopping / failed）与 \`onASRResult\`
 
 ### 识别后自动对话
 
-识别结束（\`isFinal: true\`）后默认**自动进入 Brain 对话链路**：识别文本交给大模型，数字人播报回复，无需手动再调 \`ask()\`。该行为由构造参数 \`features.auto_send_asr_to_llm\` 控制，默认 \`true\`：
+识别结束（\`isFinal: true\`）后默认**自动进入 Brain 对话链路**：识别文本交给大模型，智能体播报回复，无需手动再调 \`ask()\`。该行为由构造参数 \`features.auto_send_asr_to_llm\` 控制，默认 \`true\`：
 
 \`\`\`javascript
 // 识别结束自动走通「感知 → 认知 → 表达」，播报结果通过 onConversationChange / onLLMResponse 观察
@@ -806,7 +806,7 @@ ASR 服务（provider、base_url、vad 尾静音等）默认使用平台配置�
 2. **查看说明**：每个 Tab 顶部的文档介绍该能力的用法
 3. **编辑代码**：编辑框已预置示例代码，可直接修改
 4. **执行**：点击「执行」按钮运行，日志输出到下方面板
-5. **观察**：数字人实时响应，日志面板展示状态变化与回调
+5. **观察**：智能体实时响应，日志面板展示状态变化与回调
 
 > ⚠️ 「表达」，以及「感知&大脑」需要先创建实例并连接成功才能使用（未连接时对应 Tab 会置灰、不可点击）。
 
@@ -838,7 +838,7 @@ await avatar.speak('你好！');
 
 | 名称 | 类型 | 说明 |
 |------|------|------|
-| \`avatar\` | 对象 | 当前数字人实例（未连接时为 \`null\`） |
+| \`avatar\` | 对象 | 当前智能体实例（未连接时为 \`null\`） |
 | \`log(...args)\` | 函数 | 输出到日志面板；多参数空格拼接，对象自动 JSON 格式化 |
 | \`wait(seconds)\` | 函数 | 等待指定秒数，返回 Promise，需 \`await\` |
 

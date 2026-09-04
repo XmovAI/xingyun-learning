@@ -1,6 +1,6 @@
 # 星云智能体 SDK 教学平台
 
-基于 [魔珐星云端到端 SDK](https://xingyun3d.com/)（`XingyunAvatarAgent`）的交互式教学应用，通过「代码编辑 + 实时执行」的方式，帮助开发者快速上手 3D 数字人驱动的 **感知 → 认知 → 表达** 全流程（ASR 语音识别 + LLM Brain 对话 + 数字人播报）。
+基于 [魔珐星云端到端 SDK](https://xingyun3d.com/)（`XingyunAvatarAgent`）的交互式教学应用，通过「代码编辑 + 实时执行」的方式，帮助开发者快速上手具身交互智能体的 **感知 → 认知 → 表达** 全流程（ASR 语音识别 + LLM Brain 对话 + 实时播报）。
 
 ## 功能概览
 
@@ -8,7 +8,7 @@
 
 ### 初始化
 - **前置准备** — 平台架构简介、注册账号与获取凭证、环境要求、SDK 引入方式
-- **创建实例** — 填写 App ID / App Secret / Gateway Server，一键创建端到端数字人（Agent）实例（「最简/完全配置」模板切换）
+- **创建实例** — 填写 App ID / App Secret / Gateway Server，一键创建端到端智能体（Agent）实例（「最简/完全配置」模板切换）
 - **连接/销毁** — `init()` / `destroy()`、Agent 状态机、断线重连
 
 ### 表达
@@ -16,18 +16,18 @@
 - **关键动作（KA）** — SSML 指令驱动预设肢体动作（ka / ka_intent）
 - **情绪** — 面部表情 + 音色情感，可显式传参或由文本自动推测
 - **隐身模式** — 暂停渲染节省资源；或纯 UI 隐藏/显示
-- **布局** — 数字人在容器中的位置、大小、对齐（静态配置 / 运行时动态修改）
+- **布局** — 智能体在容器中的位置、大小、对齐（静态配置 / 运行时动态修改）
 - **行走** — 水平移动动画，适用于展厅引导
 - **Widget** — 播报中渲染图片、视频、链接等多媒体（`onWidgetEvent` / `proxyWidget`）
 - **状态切换** — Idle / Interactive Idle / Listen，`interrupt()` 打断
 
 ### 感知&大脑
 - **初始化** — Agent / ASR / Brain 回调与自定义服务配置；ASR / Brain 默认使用平台预置配置，开箱即用
-- **文本对话** — `ask()` → Brain 多轮推理 → 数字人播报
-- **语音对话** — `startASR()` 麦克风 → 平台 ASR 识别 → 自动进入 Brain → 数字人播报（可用 `features.auto_send_asr_to_llm` 关闭自动进 Brain，仅取识别文本）
+- **文本对话** — `ask()` → Brain 多轮推理 → 实时播报
+- **语音对话** — `startASR()` 麦克风 → 平台 ASR 识别 → 自动进入 Brain → 实时播报（可用 `features.auto_send_asr_to_llm` 关闭自动进 Brain，仅取识别文本）
 
 ### 智能体Demo
-- **Demo** — 完整独立的数字人示例页面，在 iframe 沙箱中隔离运行（自带 SDK 加载与实例管理）
+- **Demo** — 完整独立的具身智能体示例页面，在 iframe 沙箱中隔离运行（自带 SDK 加载与实例管理）
 
 ### 帮助
 - **使用说明** — 编辑器用法、占位符注入、预置方法，可重播新手引导
@@ -76,7 +76,7 @@ xingyun-learning/
 │   │   └── xingyun-avatar-agent.d.ts  # @xmov/avatar/agent 类型占位声明
 │   ├── components/
 │   │   ├── action-bar.ts       # 操作按钮栏
-│   │   ├── avatar-panel.ts     # 数字人容器面板
+│   │   ├── avatar-panel.ts     # 智能体容器面板
 │   │   ├── code-editor.ts      # CodeMirror 代码编辑器
 │   │   ├── collapsible.ts      # 折叠面板
 │   │   ├── demo-preview.ts     # 智能体Demo iframe 预览层
@@ -88,7 +88,7 @@ xingyun-learning/
 │   │   ├── log-panel.ts        # 日志面板
 │   │   └── sidebar.ts          # 左侧边栏
 │   ├── core/
-│   │   ├── avatar-manager.ts   # 数字人实例管理器
+│   │   ├── avatar-manager.ts   # 智能体实例管理器
 │   │   ├── code-executor.ts    # 代码执行沙箱
 │   │   └── theme.ts            # 主题切换（明暗/系统）
 │   ├── data/
@@ -127,7 +127,7 @@ xingyun-learning/
 
 | 平台 | 用途 | 获取地址 |
 |------|------|----------|
-| [魔珐星云](https://xingyun3d.com/) | 数字人 App ID / App Secret | 平台控制台 |
+| [魔珐星云](https://xingyun3d.com/) | App ID / App Secret | 平台控制台 |
 | 魔珐星云（Gateway） | Agent 会话接口地址（`ttsa_v2`，默认已预填） | 项目方提供 |
 
 语音识别（ASR）与对话大脑（Brain/LLM）**默认使用平台预置配置**，无需额外凭证；如需自定义 provider（`openai_compatible` / `anthropic` / `doubao` / `qwen`），在「感知&大脑 → 初始化」填写 `asr_config` / `brain_config` 后「重新加载」即可。

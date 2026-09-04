@@ -638,7 +638,7 @@ export const AGENT_INIT_ACTIONS: ActionButton[] = [
       const base = getCreateInstanceCode();
       const fragment = ctx.getCode() || CODE_TEMPLATES.agentCallbacks;
       const merged = mergeFragments(base, fragment);
-      // 执行实例创建 + init，完成数字人重连
+      // 执行实例创建 + init，完成智能体重连
       await executeCode(merged + '\n\n' + CODE_TEMPLATES.reloadInit);
     },
   },
@@ -737,7 +737,7 @@ export const DEMO_ACTIONS: ActionButton[] = [
       if (isDemoPreviewActive()) {
         // 退出预览：清空 iframe，demo 实例销毁，画布归还教学区
         hideDemoPreview();
-        ctx.log('已退出预览，画布归还教学区；回到「创建实例」执行可重新连接教学数字人');
+        ctx.log('已退出预览，画布归还教学区；回到「创建实例」执行可重新连接教学智能体');
         return;
       }
       // 进入预览：若教学实例处于连接态，先销毁（互斥）

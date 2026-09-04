@@ -2,7 +2,7 @@
 // plus the two template strings from src/data/code-templates.ts, and assert behavior.
 
 // ---------- templates (copied) ----------
-const createInstance = `// 创建端到端数字人（Agent）实例 —— 最简配置
+const createInstance = `// 创建端到端智能体（Agent）实例 —— 最简配置
 const APP_ID = '{{appId}}';
 const APP_SECRET = '{{appSecret}}';
 if (APP_ID.startsWith('{{') || APP_SECRET.startsWith('{{')) {
@@ -31,7 +31,7 @@ const avatar = new XingyunAvatarAgent({
   },
 });`;
 
-const createInstanceFull = `// 创建端到端数字人（Agent）实例 —— 完整配置
+const createInstanceFull = `// 创建端到端智能体（Agent）实例 —— 完整配置
 const APP_ID = '{{appId}}';
 const APP_SECRET = '{{appSecret}}';
 if (APP_ID.startsWith('{{') || APP_SECRET.startsWith('{{')) {
@@ -136,7 +136,7 @@ const avatar = new XingyunAvatarAgent({
     base_url: 'https://你的LLM服务地址',
     api_key: '...',
     model: 'your-model',
-    preset: '你是魔珐星云的数字人助手，请用简短友好的语气回复。',
+    preset: '你是魔珐星云小助手，请用简短友好的语气回复。',
     history_length: 5,
     extra_body: {},
   },
@@ -515,7 +515,7 @@ console.log('== 场景6: 重新加载 —— 创建实例(最简) + 回调函数
 {
   const out = mergeFragments(createInstance, callbacksFragment);
   has(out, '// ASR / LLM 相关回调', '片段纯注释头部保留到结果最前');
-  has(out, '// 创建端到端数字人（Agent）实例 —— 最简配置', 'base 头部注释保留');
+  has(out, '// 创建端到端智能体（Agent）实例 —— 最简配置', 'base 头部注释保留');
   has(out, "containerId: '#avatar-container'", 'base 字段保持不变');
   has(out, 'appId: APP_ID', 'base 凭证引用保留');
   assert(out.split('const avatar').length === 2, 'const avatar 只出现一次（片段声明被丢弃，仅合并 options）');
@@ -576,7 +576,7 @@ function braceBalance(text) {
 }
 {
   const out = mergeConfig(createInstanceFull, editedMinimal);
-  assert(out.startsWith('// 创建端到端数字人（Agent）实例 —— 完整配置'), '结果以模板头部注释开头');
+  assert(out.startsWith('// 创建端到端智能体（Agent）实例 —— 完整配置'), '结果以模板头部注释开头');
   assert(out.endsWith('});'), '结果以 }); 结尾');
   assert(braceBalance(out) === 0, `字符串外花括号配平（差值 ${braceBalance(out)}，应为 0）`);
   const outMin = mergeConfig(createInstance, editedMinimal);
