@@ -170,7 +170,8 @@ export function createCodeEditor(tabModuleId: string, defaultCode: string): HTML
     const persisted = state.code || '';
     const isCurrentTemplate = DEMO_CONTAINER_SIG.test(defaultCode);
     const source = isCurrentTemplate && !DEMO_CONTAINER_SIG.test(persisted) ? defaultCode : (persisted || defaultCode);
-    // 展示层把 {{gatewayServer}} 同步为表单当前值（appId/appSecret 保持占位符）
+    // 兼容旧快照里的内联 gatewayServer 字面量：展示层同步为表单当前值
+    // （新模板顶部 const GATEWAY_SERVER 占位符与 appId/appSecret 一致，保持原样）
     const initialCode = store.resolveGatewayDisplay(source);
 
     const view = new EditorView({
@@ -200,8 +201,9 @@ export function setEditorCode(tabModuleId: string, code: string) {
 }
 
 /**
- * 表单保存/清空后调用：把所有已挂载编辑器里的 {{gatewayServer}} 就地更新为当前值，
- * 并在没有占位符时（旧字面量）也同步成最新网关，保证「创建实例」代码实时跟随表单。
+ * 表单保存/清空后调用：把旧快照里内联的 gatewayServer 字面量就地更新为当前值。
+ * 新模板以顶部 const GATEWAY_SERVER = '{{gatewayServer}}' 占位（与 appId/appSecret 一致），
+ * 编辑器中保持占位符、仅在「执行」时注入，因此本方法对新模板不再生效。
  */
 export function syncGatewayToEditors(): void {
   editorInstances.forEach((view, tabModuleId) => {

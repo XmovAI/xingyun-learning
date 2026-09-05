@@ -5,6 +5,7 @@
 const createInstance = `// 创建端到端智能体（Agent）实例 —— 最简配置
 const APP_ID = '{{appId}}';
 const APP_SECRET = '{{appSecret}}';
+const GATEWAY_SERVER = '{{gatewayServer}}';
 if (APP_ID.startsWith('{{') || APP_SECRET.startsWith('{{')) {
   log('请先在「初始化」tab 配置 AppId 与 AppSecret');
   throw new Error('应用凭证未配置');
@@ -13,7 +14,7 @@ const avatar = new XingyunAvatarAgent({
   containerId: '#avatar-container',
   appId: APP_ID,
   appSecret: APP_SECRET,
-  gatewayServer: '{{gatewayServer}}',
+  gatewayServer: GATEWAY_SERVER,
   onMessage(error) {
     log('SDK 错误:', error.code, error.message);
   },
@@ -34,6 +35,7 @@ const avatar = new XingyunAvatarAgent({
 const createInstanceFull = `// 创建端到端智能体（Agent）实例 —— 完整配置
 const APP_ID = '{{appId}}';
 const APP_SECRET = '{{appSecret}}';
+const GATEWAY_SERVER = '{{gatewayServer}}';
 if (APP_ID.startsWith('{{') || APP_SECRET.startsWith('{{')) {
   log('请先在「初始化」tab 配置 AppId 与 AppSecret');
   throw new Error('应用凭证未配置');
@@ -42,7 +44,7 @@ const avatar = new XingyunAvatarAgent({
   containerId: '#avatar-container',
   appId: APP_ID,
   appSecret: APP_SECRET,
-  gatewayServer: '{{gatewayServer}}',
+  gatewayServer: GATEWAY_SERVER,
   // 客户端打断、运行时布局配置
   enableClientInterrupt: true,
   config: {
@@ -351,22 +353,34 @@ function injectWidgetOption(code, kind) {
   if (idx === -1) return code;
   const before = code.slice(0, idx);
   const after = code.slice(idx);
-  const gap = before.endsWith('\n') ? '' : '\n';
-  return before + gap + snippet + '\n' + after;
+  // options 对象最后一个字段若没带尾逗号（如 merge 产物），拼接新字段会直接语法错误，
+  // 插入前先补逗号；已有逗号、或空对象（最后一个字符是 `{`）时不需要补
+  const tail = before.replace(/\s+$/, '');
+  const lastCh = tail.slice(-1);
+  const comma = lastCh !== ',' && lastCh !== '{' ? ',' : '';
+  return tail + comma + '\n' + snippet + '\n' + after;
 }
 
-function mergeConfig(template, currentCode) {
+function mergeConfig(template, currentCode, keepWidgets = true) {
   const templateObj = matchOptionsObject(template);
   if (!templateObj) return template;
   const currentObj = matchOptionsObject(currentCode);
   if (!currentObj) return template;
 
+  // options 对象最后一个字段重建后没有尾逗号（join 只负责字段之间的分隔），
+  // 而结尾随后还要拼接 Widget 回调或直接闭合 })，缺逗号会直接产生语法错误，因此补上；
+  // 闭合符 `})` 换行书写，避免出现 `},})` 挤在一行的写法。
   const mergedInner = mergeObjectInner(templateObj.inner, currentObj.inner, '  ');
-  let result = template.slice(0, templateObj.innerStart) + mergedInner + template.slice(templateObj.innerEnd);
+  const innerOut = mergedInner.trimEnd().endsWith(',') ? mergedInner.trimEnd() : `${mergedInner.trimEnd()},`;
+  let result = template.slice(0, templateObj.innerStart) + innerOut + '\n' + template.slice(templateObj.innerEnd);
 
-  for (const kind of Object.keys(WIDGET_OPTIONS)) {
-    if (currentCode.includes(WIDGET_OPTIONS[kind].key)) {
-      result = injectWidgetOption(result, kind);
+  // 保留已注入的 Widget 回调（完全配置切换时带过去）；
+  // 最简配置刻意不保留，「最简」= 仅模板字段，onWidgetEvent / proxyWidget 一并丢弃。
+  if (keepWidgets) {
+    for (const kind of Object.keys(WIDGET_OPTIONS)) {
+      if (currentCode.includes(WIDGET_OPTIONS[kind].key)) {
+        result = injectWidgetOption(result, kind);
+      }
     }
   }
   return result;
@@ -451,12 +465,12 @@ function lacks(result, needle, msg) {
 }
 
 // --- 构造「用户改过的当前代码」 ---
-// 最简基础上：用户改了 containerId、onMessage 函数体、onConversationChange，且 gateway 被表单同步成了字面量
+// 最简基础上：用户改了 containerId、onMessage 函数体、onConversationChange，且 gateway 被表单同步成了顶部常量的字面量
 const editedMinimal = createInstance
   .replace("containerId: '#avatar-container'", "containerId: '#my-minimal-container'")
   .replace(/log\('SDK 错误:', error\.code, error\.message\);\s*\}/, "log('MY error handler');\n    if (error) console.error(error);\n  }")
   .replace("else log('对话状态:', event.state);", "else log('MY conversation state:', event.state);")
-  .replace("gatewayServer: '{{gatewayServer}}'", "gatewayServer: 'https://my-gateway.example.com/session'");
+  .replace("const GATEWAY_SERVER = '{{gatewayServer}}'", "const GATEWAY_SERVER = 'https://my-gateway.example.com/session'");
 
 // 完全基础上：用户改了 containerId、reconnect.maxAttempts、onStatusChange 函数体
 const editedFull = createInstanceFull
@@ -468,7 +482,7 @@ console.log('== 场景1: 最简(已编辑) 点击最简配置 ==');
 {
   const out = mergeConfig(createInstance, editedMinimal);
   has(out, "#my-minimal-container", 'containerId 保留用户值');
-  has(out, "gatewayServer: '{{gatewayServer}}'", 'gatewayServer 恢复为占位符（不取表单字面量）');
+  has(out, "const GATEWAY_SERVER = '{{gatewayServer}}'", 'gatewayServer 恢复为占位符（不取表单字面量）');
   lacks(out, 'my-gateway.example.com', '不含被同步进代码的网关字面量');
   has(out, "log('MY error handler')", 'onMessage 函数体保留用户改动');
   has(out, 'MY conversation state', 'agentCallbacks.onConversationChange 保留用户改动');
@@ -482,7 +496,7 @@ console.log('== 场景2: 最简(已编辑) 点击完全配置 ==');
 {
   const out = mergeConfig(createInstanceFull, editedMinimal);
   has(out, "#my-minimal-container", 'containerId 保留用户值');
-  has(out, "gatewayServer: '{{gatewayServer}}'", 'gatewayServer 为占位符');
+  has(out, "const GATEWAY_SERVER = '{{gatewayServer}}'", 'gatewayServer 为占位符');
   has(out, "log('MY error handler')", 'onMessage 函数体保留用户改动');
   has(out, 'MY conversation state', 'onConversationChange 保留用户改动');
   lacks(out, 'asr_config', '完全模板已不含 asr_config');
@@ -538,8 +552,12 @@ console.log('== 场景5: 用户手工在代码里加回 asr_config/brain_config�
 console.log('== 场景4: 最简(已编辑+已注入 Widget) 点击最简/完全配置 ==');
 {
   const withWidget = editedMinimal.replace('});', widgetOnEventOption + '\n});');
-  const outS = mergeConfig(createInstance, withWidget);
-  has(outS, 'onWidgetEvent(data)', '最简切换后 Widget 回调保留');
+  // 最简配置：刻意不保留 Widget 回调（keepWidgets=false），仅模板字段
+  const outS = mergeConfig(createInstance, withWidget, false);
+  lacks(outS, 'onWidgetEvent(data)', '最简切换后 Widget 回调丢弃（仅模板字段）');
+  lacks(outS, 'onWidgetEvent', '最简切换后不残留 onWidgetEvent');
+  has(outS, '#my-minimal-container', '最简切换后 containerId 仍保留');
+  // 完全配置：默认保留已注入的 Widget 回调
   const outF = mergeConfig(createInstanceFull, withWidget);
   has(outF, 'onWidgetEvent(data)', '完全切换后 Widget 回调保留');
   has(outF, '#my-minimal-container', '完全切换后 containerId 仍保留（含 Widget 注入的代码）');
@@ -642,6 +660,40 @@ function braceBalance(text) {
   assert(braceBalance(outReloadFB) === 0, `重新加载-回调合并结果花括号配平（差值 ${braceBalance(outReloadFB)}，应为 0）`);
   const outReloadCC = mergeFragments(createInstance, customConfigFragment);
   assert(braceBalance(outReloadCC) === 0, `重新加载-自定义配置合并结果花括号配平（差值 ${braceBalance(outReloadCC)}，应为 0）`);
+}
+
+console.log('== 场景10: 尾逗号回归 —— merge 产物再拼接 Widget 回调不产生语法错误 ==');
+{
+  // 最简/完全配置示例代码 options 对象重建后，最后一个字段必须带尾逗号；
+  // 否则在「Widget」tab 拼接 proxyWidget / onWidgetEvent 回调时会得到
+  // `}` 与 `proxyWidget(` 直连的语法错误（本次修复的回归点）。
+  const merged = mergeConfig(createInstance, editedMinimal);
+  const mergedTail = merged.slice(0, merged.lastIndexOf('});')).replace(/\s+$/, '');
+  assert(mergedTail.endsWith(','), 'merge 产物 options 末字段带尾逗号（可再拼接）');
+  has(merged, '  },\n});', '尾逗号后换行再闭合（不出现 `,})` 挤在一行）');
+  assert(braceBalance(merged) === 0, `merge 产物花括号配平（差值 ${braceBalance(merged)}，应为 0）`);
+
+  // 用户操作路径：点一次「最简配置」后，直接注入 proxyWidget 回调
+  const injected = injectWidgetOption(merged, 'proxyWidget');
+  has(injected, 'proxyWidget: {', 'proxyWidget 回调已注入');
+  lacks(injected, '}\n  proxyWidget', 'proxyWidget 前有逗号（不再出现缺逗号的直连）');
+  const beforeProxy = injected.slice(0, injected.indexOf('proxyWidget')).replace(/\s+$/, '');
+  assert(beforeProxy.endsWith(','), 'proxyWidget 拼接点前一个非空字符是逗号');
+  assert(braceBalance(injected) === 0, `注入 proxyWidget 后花括号配平（差值 ${braceBalance(injected)}，应为 0）`);
+
+  // 完全配置同样场景 + onWidgetEvent 回调
+  const mergedFull = mergeConfig(createInstanceFull, editedFull);
+  const injectedEvent = injectWidgetOption(mergedFull, 'onWidgetEvent');
+  has(injectedEvent, 'onWidgetEvent(data)', 'onWidgetEvent 回调已注入');
+  lacks(injectedEvent, '}\n  onWidgetEvent', 'onWidgetEvent 前有逗号');
+  assert(braceBalance(injectedEvent) === 0, `注入 onWidgetEvent 后花括号配平（差值 ${braceBalance(injectedEvent)}，应为 0）`);
+
+  // 变体：人工去掉尾逗号（等价于旧的缺逗号产物），injectWidgetOption 需自行补齐后再插入
+  const stripped = merged.replace(/,\s*\}\);$/, '\n});');
+  const reinjected = injectWidgetOption(stripped, 'onWidgetEvent');
+  has(reinjected, 'onWidgetEvent(data)', '缺尾逗号时仍能注入 onWidgetEvent');
+  lacks(reinjected, '}\n  onWidgetEvent', '缺尾逗号输入下 injectWidgetOption 自动补逗号');
+  assert(braceBalance(reinjected) === 0, `补逗号后拼接结果花括号配平（差值 ${braceBalance(reinjected)}，应为 0）`);
 }
 
 console.log(failed === 0 ? '\n全部通过 ✓' : `\n${failed} 处失败 ✗`);

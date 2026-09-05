@@ -7,6 +7,7 @@ export const CODE_TEMPLATES = {
   createInstance: `// 创建端到端智能体（Agent）实例 —— 最简配置
 const APP_ID = '{{appId}}';
 const APP_SECRET = '{{appSecret}}';
+const GATEWAY_SERVER = '{{gatewayServer}}';
 if (APP_ID.startsWith('{{') || APP_SECRET.startsWith('{{')) {
   log('请先在「初始化」tab 配置 AppId 与 AppSecret');
   throw new Error('应用凭证未配置');
@@ -15,7 +16,7 @@ const avatar = new XingyunAvatarAgent({
   containerId: '#avatar-container',
   appId: APP_ID,
   appSecret: APP_SECRET,
-  gatewayServer: '{{gatewayServer}}',
+  gatewayServer: GATEWAY_SERVER,
   onMessage(error) {
     log('SDK 错误:', error.code, error.message);
   },
@@ -36,6 +37,7 @@ const avatar = new XingyunAvatarAgent({
   createInstanceFull: `// 创建端到端智能体（Agent）实例 —— 完整配置
 const APP_ID = '{{appId}}';
 const APP_SECRET = '{{appSecret}}';
+const GATEWAY_SERVER = '{{gatewayServer}}';
 if (APP_ID.startsWith('{{') || APP_SECRET.startsWith('{{')) {
   log('请先在「初始化」tab 配置 AppId 与 AppSecret');
   throw new Error('应用凭证未配置');
@@ -44,7 +46,7 @@ const avatar = new XingyunAvatarAgent({
   containerId: '#avatar-container',
   appId: APP_ID,
   appSecret: APP_SECRET,
-  gatewayServer: '{{gatewayServer}}',
+  gatewayServer: GATEWAY_SERVER,
   // 客户端打断、运行时布局配置
   enableClientInterrupt: true,
   config: {
@@ -150,7 +152,12 @@ avatar.speak('<speak>太棒了！我们成功了！</speak>', true, true, {
 avatar.speak(\`
 <speak>
   大家好！
-  <ue4event><type>ka</type><data><action_semantic>${action}</action_semantic></data></ue4event>
+  <ue4event>
+    <type>ka</type>
+    <data>
+      <action_semantic>${action}</action_semantic>
+    </data>
+  </ue4event>
   感谢大家的关注。
 </speak>
 \`);`,
@@ -159,7 +166,12 @@ avatar.speak(\`
 avatar.speak(\`
 <speak>
   请看这里。
-  <ue4event><type>ka_intent</type><data><ka_intent>${intent}</ka_intent></data></ue4event>
+  <ue4event>
+    <type>ka_intent</type>
+    <data>
+      <ka_intent>${intent}</ka_intent>
+    </data>
+  </ue4event>
   我来为大家演示。
 </speak>
 \`);`,
@@ -224,7 +236,12 @@ log('点位定义完成');`,
   walkGo: `// 触发行走 — SSML walk 指令让智能体移动到目标点位
 avatar.speak(\`
 <speak>
-  <ue4event><type>walk</type><data><target>B</target></data></ue4event>
+  <ue4event>
+    <type>walk</type>
+    <data>
+      <target>B</target>
+    </data>
+  </ue4event>
   我正在走过去。
 </speak>
 \`);`,
@@ -251,9 +268,22 @@ log('布局已更新');`,
   widgetCustomEvent: `// 自定义事件：图片 + 视频 —— 播报中驱动显示多媒体
 avatar.speak(\`
 <speak>
-  <uievent><type>show_image</type><data><image>https://example.com/1.png</image><title>图片1</title></data></uievent>
+  <uievent>
+    <type>show_image</type>
+    <data>
+      <image>https://example.com/1.png</image>
+      <title>图片1</title>
+    </data>
+  </uievent>
   首先展示图片。
-  <uievent><type>show_video</type><data><video>https://example.com/demo.mp4</video><cover>https://example.com/c.jpg</cover><title>视频</title></data></uievent>
+  <uievent>
+    <type>show_video</type>
+    <data>
+      <video>https://example.com/demo.mp4</video>
+      <cover>https://example.com/c.jpg</cover>
+      <title>视频</title>
+    </data>
+  </uievent>
   接着播放视频。
 </speak>
 \`);`,

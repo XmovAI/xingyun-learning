@@ -123,9 +123,9 @@ class Store {
   }
 
   /**
-   * 展示层同步：把代码中 gatewayServer 的值（占位符或旧字面量）替换为表单当前值，
-   * 使创建实例代码与「Gateway Server」输入项实时一致。
-   * appId/appSecret 属于密钥，仍保持占位符，仅在「执行」时注入。
+   * 展示层兼容：把旧快照中内联的 gatewayServer 值（占位符或旧字面量）替换为表单当前值。
+   * 新模板以顶部 const GATEWAY_SERVER = '{{gatewayServer}}' 占位（与 appId/appSecret 一致），
+   * 编辑器中保持占位符、仅在「执行」时注入，因此本方法对新模板不再生效。
    */
   resolveGatewayDisplay(code: string): string {
     const gateway = escapeJsString(this.getGatewayServer());

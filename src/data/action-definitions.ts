@@ -177,19 +177,26 @@ function matchOptionsObject(code: string): { innerStart: number; innerEnd: numbe
   return { innerStart: start + 1, innerEnd: end, inner: code.slice(start + 1, end) };
 }
 
-function mergeConfig(template: string, currentCode: string): string {
+function mergeConfig(template: string, currentCode: string, keepWidgets = true): string {
   const templateObj = matchOptionsObject(template);
   if (!templateObj) return template;
   const currentObj = matchOptionsObject(currentCode);
   if (!currentObj) return template;
 
+  // options 对象最后一个字段重建后没有尾逗号（join 只负责字段之间的分隔），
+  // 而结尾随后还要拼接 Widget 回调或直接闭合 })，缺逗号会直接产生语法错误，因此补上；
+  // 闭合符 `})` 换行书写，避免出现 `},})` 挤在一行的写法。
   const mergedInner = mergeObjectInner(templateObj.inner, currentObj.inner, '  ');
-  let result = template.slice(0, templateObj.innerStart) + mergedInner + template.slice(templateObj.innerEnd);
+  const innerOut = mergedInner.trimEnd().endsWith(',') ? mergedInner.trimEnd() : `${mergedInner.trimEnd()},`;
+  let result = template.slice(0, templateObj.innerStart) + innerOut + '\n' + template.slice(templateObj.innerEnd);
 
-  // 保留已注入的 Widget 回调，避免在最简/完全配置之间切换时丢失
-  for (const kind of Object.keys(WIDGET_OPTIONS) as WidgetCallbackKind[]) {
-    if (currentCode.includes(WIDGET_OPTIONS[kind].key)) {
-      result = injectWidgetOption(result, kind);
+  // 保留已注入的 Widget 回调（完全配置切换时带过去）；
+  // 最简配置刻意不保留，「最简」= 仅模板字段，onWidgetEvent / proxyWidget 一并丢弃。
+  if (keepWidgets) {
+    for (const kind of Object.keys(WIDGET_OPTIONS) as WidgetCallbackKind[]) {
+      if (currentCode.includes(WIDGET_OPTIONS[kind].key)) {
+        result = injectWidgetOption(result, kind);
+      }
     }
   }
   return result;
@@ -285,8 +292,12 @@ function injectWidgetOption(code: string, kind: WidgetCallbackKind): string {
   if (idx === -1) return code; // 未找到闭合符，放弃注入
   const before = code.slice(0, idx);
   const after = code.slice(idx);
-  const gap = before.endsWith('\n') ? '' : '\n';
-  return before + gap + snippet + '\n' + after;
+  // options 对象最后一个字段若没带尾逗号（如 merge 产物），拼接新字段会直接语法错误，
+  // 插入前先补逗号；已有逗号、或空对象（最后一个字符是 `{`）时不需要补
+  const tail = before.replace(/\s+$/, '');
+  const lastCh = tail.slice(-1);
+  const comma = lastCh !== ',' && lastCh !== '{' ? ',' : '';
+  return tail + comma + '\n' + snippet + '\n' + after;
 }
 
 /** 读取创建实例编辑器当前代码；编辑器未挂载时回退到持久化内容或默认模板 */
@@ -324,7 +335,8 @@ export const CREATE_INSTANCE_ACTIONS: ActionButton[] = [
     label: '最简配置',
     type: 'button',
     handler: (ctx) => {
-      ctx.setCode(mergeConfig(CODE_TEMPLATES.createInstance, ctx.getCode()));
+      // 最简配置：仅保留最简模板的字段，已注入的 Widget 回调不保留
+      ctx.setCode(mergeConfig(CODE_TEMPLATES.createInstance, ctx.getCode(), false));
     },
   },
   {

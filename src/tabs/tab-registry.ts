@@ -150,7 +150,7 @@ Agent 专属回调组，与旧版顶层回调并存：
 
 ### 占位符
 
-创建实例代码中的 \`{{gatewayServer}}\` 会**实时同步**「初始化」表单的 Gateway Server 输入（保存/清空即生效，未配置时显示默认 ttsa_v2 地址）；\`{{appId}}\` / \`{{appSecret}}\` 会在「执行」时自动注入。下面表单保存后即可运行。
+创建实例代码顶部的 \`const APP_ID / APP_SECRET / GATEWAY_SERVER\` 是占位符常量：\`{{appId}}\` / \`{{appSecret}}\` / \`{{gatewayServer}}\` 统一在「执行」时注入表单中保存的值，不在编辑器里烘焙实际字面量；\`{{gatewayServer}}\` 未配置时自动使用默认的 ttsa_v2 地址。表单保存后即可运行。
 
 工具栏的「最简配置」/「完全配置」用于切换模板：**表单配置的字段（appId / appSecret / gatewayServer）恢复为 \`{{占位符}}\`**，不在代码里烘焙字面量；**其余字段保留当前代码的值**（如你改过的 containerId、回调函数体、reconnect 参数），模板只决定字段集合——切到完全会补上 config、reconnect、onStatusChange 等，切回最简会移除它们。你要改的任何非表单字段在切换后都还在。
 `,
@@ -819,9 +819,9 @@ ASR 服务（provider、base_url、vad 尾静音等）默认使用平台配置�
 | 占位符 | 来源 |
 |--------|------|
 | \`{{appId}}\` / \`{{appSecret}}\` | 初始化 · 创建实例配置表单（执行时注入） |
-| \`{{gatewayServer}}\` | 初始化 · Gateway Server（保存后立即同步到代码） |
+| \`{{gatewayServer}}\` | 初始化 · Gateway Server（执行时注入，未配置时用默认 ttsa_v2 地址） |
 
-未配置的占位符**保持原样**（如 \`{{appId}}\`），预置模板会检测到并用 \`log()\` 提示你先去配置。\`{{gatewayServer}}\` 未配置时自动使用默认的 ttsa_v2 地址，代码中会直接显示该地址。
+未配置的占位符**保持原样**（如 \`{{appId}}\`），预置模板会检测到并用 \`log()\` 提示你先去配置。\`{{gatewayServer}}\` 未配置时自动使用默认的 ttsa_v2 地址。
 
 #### 2. async 执行
 
