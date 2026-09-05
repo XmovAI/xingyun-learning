@@ -48,7 +48,7 @@ const avatar = new XingyunAvatarAgent({
   config: {
     layout: {
       container: { size: [360, 640] },
-      avatar: { v_align: 'bottom', h_align: 'center', scale: 1, offset_x: 0, offset_y: 0 },
+      avatar: { v_align: 'bottom', h_align: 'center', scale: '100vh', offset_x: 0, offset_y: 0 },
     },
     raw_audio: false,
   },
@@ -95,6 +95,8 @@ const avatar = new XingyunAvatarAgent({
 // 「回调函数」片段（复制自 code-templates.ts agentCallbacks）
 const callbacksFragment = `// ASR / LLM 相关回调 —— 点击「重新加载」时合并进「创建实例」代码
 const avatar = new XingyunAvatarAgent({
+  // ...此处省略基础配置，基础配置使用\`初始化\`-\`创建实例\`中的配置
+
   agentCallbacks: {
     // 麦克风与识别状态
     onASRStateChange(state) {
@@ -123,6 +125,8 @@ const customConfigFragment = `// ⚠️ 安全提示：asr_config / brain_config
 // 仅用于测试或私有化部署环境，对外公开展示存在密钥泄露风险。
 // 生产环境请在星云平台中配置。
 const avatar = new XingyunAvatarAgent({
+  // ...此处省略基础配置，基础配置使用\`初始化\`-\`创建实例\`中的配置
+
   // ASR 服务配置（测试 / 私有化部署专用）
   asr_config: {
     provider: 'xmov',                        // 或 doubao / tencent
@@ -139,6 +143,37 @@ const avatar = new XingyunAvatarAgent({
     preset: '你是魔珐星云小助手，请用简短友好的语气回复。',
     history_length: 5,
     extra_body: {},
+  },
+});`;
+
+// 「ASR独立调用」片段（复制自 code-templates.ts agentASRIndependent）
+const asrIndependentFragment = `// ASR 独立调用 —— 关闭「识别结果自动发大脑」，由业务手动判定
+// 场景：语音识别只负责收集文本，是否发起 Brain 对话由规则自行决定。
+// 用法：点击「重新加载」（重建实例并 init），再到「语音对话」点「开始录音」。
+const avatar = new XingyunAvatarAgent({
+  // ...此处省略基础配置，基础配置使用\`初始化\`-\`创建实例\`中的配置
+
+  // 关闭自动送审：识别出的最终文本不会自动发给 LLM，等待应用自行调用 ask()
+  features: {
+    auto_send_asr_to_llm: false,
+  },
+  agentCallbacks: {
+    onASRResult(result) {
+      log('ASR:', result.text, result.isFinal ? '(final)' : '');
+      if (!result.isFinal) return;             // 只处理稳定结果
+      if (!result.text.startsWith('你好')) {
+        log('非指令开头，不发起对话:', result.text);
+        return;
+      }
+      // 命中「你好」前缀：去掉指令词，把问题本体交给 Brain
+      const question = result.text.slice('你好'.length).trim();
+      if (!question) {
+        log('已识别到前缀，但缺少问题内容');
+        return;
+      }
+      log('命中指令前缀，发起对话:', question);
+      avatar.ask(question).catch((e) => log('对话失败:', e.message || e));
+    },
   },
 });`;
 
@@ -233,7 +268,11 @@ function splitTopLevelEntries(text) {
 function splitEntry(entry) {
   let rest = entry.trimStart();
   let comment = '';
+  // 收集条目开头的行注释/块注释（与 action-definitions.ts splitEntry 保持同步）
   for (;;) {
+    // 注释之间允许夹空行（如「省略基础配置」说明与字段注释之间的空行），空行本身不进入 comment
+    const blank = rest.match(/^(?:[ \t]*\n)+[ \t]*/);
+    if (blank) { rest = rest.slice(blank[0].length); continue; }
     const line = rest.match(/^\/\/[^\n]*(?:\n|$)/);
     if (line) { comment += line[0]; rest = rest.slice(line[0].length); continue; }
     const block = rest.match(/^\/\*[\s\S]*?\*\//);
@@ -451,6 +490,8 @@ console.log('== 场景2: 最简(已编辑) 点击完全配置 ==');
   lacks(out, 'ASR_CONFIG', '完全模板已不含 ASR 配置常量');
   has(out, 'enableClientInterrupt: true', '新增 enableClientInterrupt');
   has(out, 'container: { size: [360, 640] }', '新增 config.layout');
+  has(out, "scale: '100vh'", '新增 config.layout.avatar.scale 为视口高度字符串');
+  lacks(out, 'scale: 1', '旧版数字 scale 不复存在');
   has(out, 'onStatusChange(status)', '新增 onStatusChange');
   has(out, 'onNetworkInfo(info)', '新增 onNetworkInfo');
   has(out, '// 自动重连', '保留模板注释「自动重连」');
@@ -523,6 +564,7 @@ console.log('== 场景6: 重新加载 —— 创建实例(最简) + 回调函数
   has(out, 'onASRStateChange(state)', '片段回调合并进 agentCallbacks');
   has(out, 'onASRResult(result)', '片段回调合并进 agentCallbacks');
   has(out, 'onLLMResponse(resp)', '片段回调合并进 agentCallbacks');
+  has(out, '此处省略基础配置', '「省略基础配置」说明保留');
   has(out, '// 麦克风与识别状态', '片段回调注释保留');
   assert(
     out.indexOf('onConversationChange') < out.indexOf('onASRStateChange'),
@@ -534,7 +576,8 @@ console.log('== 场景7: 重新加载 —— 创建实例(最简) + 自定义配
 {
   const out = mergeFragments(createInstance, customConfigFragment);
   has(out, '⚠️ 安全提示：asr_config / brain_config 中包含访问凭证', '安全提示首行保留');
-  has(out, '生产环境请在星云平台中配置（浏览器侧凭证由项目方提供）', '安全提示末行保留');
+  has(out, '生产环境请在星云平台中配置。', '安全提示末行保留');
+  has(out, '此处省略基础配置', '「省略基础配置」说明随合并保留');
   has(out, 'asr_config: {', '合并 asr_config');
   has(out, "provider: 'xmov'", 'asr_config 内容保留');
   has(out, 'brain_config: {', '合并 brain_config');
@@ -557,6 +600,20 @@ console.log('== 场景8: agentCallbacks 深合并 —— 片段覆盖同名、�
   has(out, "log('Agent 状态:', state)", 'base 独有 onAgentStateChange 保留（并集）');
   has(out, "log('ASR 状态:', state)", '片段独有 onASRStateChange 追加（并集）');
   assert(out.indexOf('onConversationChange') < out.indexOf('onASRStateChange'), 'override 在原位、新增在末尾');
+}
+
+console.log('== 场景9: 重新加载 —— 创建实例(最简) + ASR独立调用片段 ==');
+{
+  const out = mergeFragments(createInstance, asrIndependentFragment);
+  has(out, '// ASR 独立调用 —— 关闭「识别结果自动发大脑」，由业务手动判定', '片段纯注释头部保留到结果最前');
+  has(out, '此处省略基础配置', '「省略基础配置」说明保留');
+  has(out, 'features: {', '合并 features');
+  has(out, 'auto_send_asr_to_llm: false', '关闭自动送审保留');
+  has(out, 'onASRResult(result)', 'ASR 结果回调合并进 agentCallbacks');
+  has(out, "containerId: '#avatar-container'", 'base 字段仍保留');
+  assert(out.indexOf('agentCallbacks') < out.indexOf('features'), 'base 骨架（agentCallbacks）在前，片段独有字段（features）追加在后');
+  const outReloadAI = mergeFragments(createInstance, asrIndependentFragment);
+  assert(braceBalance(outReloadAI) === 0, `重新加载-ASR独立合并结果花括号配平（差值 ${braceBalance(outReloadAI)}，应为 0）`);
 }
 
 console.log('== 输出校验: 结果代码语法仍是完整模板结构 ==');

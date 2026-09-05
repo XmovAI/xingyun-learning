@@ -115,6 +115,9 @@ function splitEntry(entry: string): { comment: string; key: string; value: strin
   let comment = '';
   // 收集条目开头的行注释/块注释，保证切换模板时模板注释不丢失
   for (;;) {
+    // 注释之间允许夹空行（如「省略基础配置」说明与字段注释之间的空行），空行本身不进入 comment
+    const blank = rest.match(/^(?:[ \t]*\n)+[ \t]*/);
+    if (blank) { rest = rest.slice(blank[0].length); continue; }
     const line = rest.match(/^\/\/[^\n]*(?:\n|$)/);
     if (line) { comment += line[0]; rest = rest.slice(line[0].length); continue; }
     const block = rest.match(/^\/\*[\s\S]*?\*\//);

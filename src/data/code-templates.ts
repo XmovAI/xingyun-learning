@@ -50,7 +50,7 @@ const avatar = new XingyunAvatarAgent({
   config: {
     layout: {
       container: { size: [360, 640] },
-      avatar: { v_align: 'bottom', h_align: 'center', scale: 1, offset_x: 0, offset_y: 0 },
+      avatar: { v_align: 'bottom', h_align: 'center', scale: '100vh', offset_x: 0, offset_y: 0 },
     },
     raw_audio: false,
   },
@@ -279,6 +279,8 @@ avatar.speak(\`
   // 「回调函数」按钮：填充 ASR / LLM 相关回调，合并进创建实例代码的 agentCallbacks
   agentCallbacks: `// ASR / LLM 相关回调 —— 点击「重新加载」时合并进「创建实例」代码
 const avatar = new XingyunAvatarAgent({
+  // ...此处省略基础配置，基础配置使用\`初始化\`-\`创建实例\`中的配置
+
   agentCallbacks: {
     // 麦克风与识别状态
     onASRStateChange(state) {
@@ -308,6 +310,8 @@ const avatar = new XingyunAvatarAgent({
 // 场景：语音识别只负责收集文本，是否发起 Brain 对话由规则自行决定。
 // 用法：点击「重新加载」（重建实例并 init），再到「语音对话」点「开始录音」。
 const avatar = new XingyunAvatarAgent({
+  // ...此处省略基础配置，基础配置使用\`初始化\`-\`创建实例\`中的配置
+
   // 关闭自动送审：识别出的最终文本不会自动发给 LLM，等待应用自行调用 ask()
   features: {
     auto_send_asr_to_llm: false,
@@ -337,6 +341,8 @@ const avatar = new XingyunAvatarAgent({
 // 仅用于测试或私有化部署环境，对外公开展示存在密钥泄露风险。
 // 生产环境请在星云平台中配置。
 const avatar = new XingyunAvatarAgent({
+  // ...此处省略基础配置，基础配置使用\`初始化\`-\`创建实例\`中的配置
+
   // ASR 服务配置（测试 / 私有化部署专用）
   asr_config: {
     provider: 'xmov',                        // 或 doubao / tencent
