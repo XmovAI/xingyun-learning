@@ -781,8 +781,9 @@ export const DEMO_ACTIONS: ActionButton[] = [
         ctx.log('已取消导出（不会写入凭证）');
         return;
       }
-      // 注入「初始化」tab 保存的凭证，导出可直接使用的独立 HTML
-      const injected = store.injectPlaceholders(code);
+      // 注入「初始化」tab 保存的凭证，导出可直接使用的独立 HTML；
+      // 不追加 data_source=2（该内部参数不落盘到导出的文件）
+      const injected = store.injectPlaceholders(code, { withDataSource2: false });
       const blob = new Blob([injected], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

@@ -63,6 +63,27 @@ function createInitialState(): AppState {
 /** localStorage keys for persisted credentials. */
 export const INIT_CONFIG_STORAGE_KEY = 'xingyun_init_config';
 
+/**
+ * 在网关 URL 上追加（或覆盖已有的）data_source=2 查询参数。
+ * 仅「执行」时注入到运行代码中生效——模板/示例代码里仍是 {{gatewayServer}} 占位符，
+ * 不会把该参数同步到展示层。
+ */
+function withDataSource2(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set('data_source', '2');
+    return parsed.toString();
+  } catch {
+    // URL 解析失败（如未带协议）时兜底：移除已有 data_source，再追加为 2
+    const [base, rest = ''] = url.split('?');
+    const params = rest
+      .split('&')
+      .filter((p) => p && !/^data_source=/i.test(p));
+    const query = [...params, 'data_source=2'].join('&');
+    return `${base}?${query}`;
+  }
+}
+
 class Store {
   private state: AppState = createInitialState();
   private listeners: Set<Listener> = new Set();
@@ -136,10 +157,12 @@ class Store {
    * Replace all {{placeholder}} tokens in code with configured values.
    * appId / appSecret / gatewayServer come from the init-config storage;
    * gatewayServer falls back to the default ttsa_v2 endpoint.
+   * 网关 URL 默认在注入时统一追加 data_source=2（若配置里已带该参数则覆盖为 2）；
+   * 传 { withDataSource2: false } 时保持配置原样（如「Demo 导出」不把该内部参数落盘）。
    * Unconfigured values are left as-is so templates can detect them and show a
    * friendly error.
    */
-  injectPlaceholders(code: string): string {
+  injectPlaceholders(code: string, options: { withDataSource2?: boolean } = {}): string {
     const values: Record<string, string> = {
       gatewayServer: '',
     };
@@ -149,6 +172,9 @@ class Store {
       values.appSecret = init.appSecret || '';
     } catch {}
     values.gatewayServer = this.getGatewayServer();
+    if (options.withDataSource2 !== false) {
+      values.gatewayServer = withDataSource2(values.gatewayServer);
+    }
     let result = code;
     for (const [key, value] of Object.entries(values)) {
       const safe = escapeJsString(value);
