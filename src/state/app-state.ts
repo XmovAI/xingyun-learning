@@ -9,6 +9,12 @@ type Listener = (state: AppState) => void;
 
 const STORAGE_KEY = 'xingyun_teaching_state';
 
+/** 日志条数上限：超出后丢弃最旧的条目，避免长会话（如 LLM 逐字流式）下渲染与内存成本无限增长。 */
+const MAX_LOG_ENTRIES = 1000;
+
+/** 持久化防抖窗口（ms）：合并短时间内的连续变更，只落盘一次。 */
+const PERSIST_DEBOUNCE_MS = 300;
+
 /** Agent 端到端会话接口地址（ttsa_v2）。未在初始化面板配置时使用该默认值。 */
 export const DEFAULT_GATEWAY = 'https://nebula-agent.xingyun3d.com/user/v1/ttsa_v2/session';
 
@@ -88,6 +94,12 @@ class Store {
   private state: AppState = createInitialState();
   private listeners: Set<Listener> = new Set();
   private logIdCounter = 0;
+  private persistTimer: number | null = null;
+
+  constructor() {
+    // 页面隐藏/卸载前把防抖窗口内待写入的改动落盘，避免最后一次编辑丢失
+    window.addEventListener('pagehide', () => this.flushPersist());
+  }
 
   get(): AppState {
     return this.state;
@@ -95,7 +107,11 @@ class Store {
 
   set(partial: Partial<AppState>) {
     this.state = { ...this.state, ...partial };
-    this.persist();
+    // 只有需要跨会话保留的字段才落盘；日志、连接态等瞬时状态不写 localStorage，
+    // 否则高频日志（LLM 流式逐字）会触发大量同步序列化 + 磁盘写入而阻塞主线程。
+    if ('tabStates' in partial || 'theme' in partial || 'zoom' in partial) {
+      this.schedulePersist();
+    }
     this.notify();
   }
 
@@ -192,7 +208,11 @@ class Store {
       level,
       args,
     };
-    this.set({ logEntries: [...this.state.logEntries, entry] });
+    const entries = [...this.state.logEntries, entry];
+    if (entries.length > MAX_LOG_ENTRIES) {
+      entries.splice(0, entries.length - MAX_LOG_ENTRIES);
+    }
+    this.set({ logEntries: entries });
   }
 
   clearLog() {
@@ -211,6 +231,26 @@ class Store {
 
   // --- Private ---
 
+  /**
+   * 防抖落盘：编辑器逐字输入、主题/缩放连续调整都会高频触发 set()，
+   * 每次同步写 localStorage 会阻塞主线程，这里合并为一次写入。
+   */
+  private schedulePersist() {
+    if (this.persistTimer !== null) return;
+    this.persistTimer = window.setTimeout(() => {
+      this.persistTimer = null;
+      this.persist();
+    }, PERSIST_DEBOUNCE_MS);
+  }
+
+  /** 立即把待写入的持久化数据落盘（页面卸载前调用）。 */
+  private flushPersist() {
+    if (this.persistTimer === null) return;
+    window.clearTimeout(this.persistTimer);
+    this.persistTimer = null;
+    this.persist();
+  }
+
   private persist() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -227,3 +267,22 @@ class Store {
 }
 
 export const store = new Store();
+
+/**
+ * 订阅作用域：把一组订阅打包，在其宿主 DOM 被重建前统一退订。
+ *
+ * 抽屉内容（日志面板 / 操作栏）每次切 Tab 都会被重新创建并各自订阅 store；
+ * 若订阅不退订，游离的旧面板仍会在每次状态变更时执行渲染，开销随切换次数线性放大。
+ */
+export class SubscriptionScope {
+  private unsubscribers: Array<() => void> = [];
+
+  subscribe(listener: Listener): void {
+    this.unsubscribers.push(store.subscribe(listener));
+  }
+
+  dispose(): void {
+    for (const unsubscribe of this.unsubscribers) unsubscribe();
+    this.unsubscribers = [];
+  }
+}

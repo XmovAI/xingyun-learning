@@ -2,13 +2,17 @@
 // Drawer Component — Sub-tabs + Content Area
 // ============================================
 
-import { store } from '../state/app-state';
+import { store, SubscriptionScope } from '../state/app-state';
 import type { SecondaryTab } from '../types';
 import { createCodeEditor } from './code-editor';
 import { createActionBar } from './action-bar';
 import { createLogPanel } from './log-panel';
 import { createDocsPanel } from './docs-panel';
 import { createInitConfigPanel } from './init-config';
+
+// 内容区里各模块（日志面板 / 操作栏）会订阅 store；每次重建内容前统一退订，
+// 否则游离的旧面板会继续在每次状态变更时执行渲染，开销随切换 Tab 次数线性放大。
+let contentScope = new SubscriptionScope();
 
 export function createDrawer(): HTMLElement {
   const drawer = document.createElement('div');
@@ -96,10 +100,14 @@ export function renderDrawerContent(
   }
   const activeTab = secondaryTabs.find(t => t.id === shownId);
   if (!activeTab) {
+    contentScope.dispose();
+    contentScope = new SubscriptionScope();
     contentContainer.innerHTML = '';
     return;
   }
 
+  contentScope.dispose();
+  contentScope = new SubscriptionScope();
   contentContainer.innerHTML = '';
   const onlyModule = activeTab.modules.length === 1;
   for (const module of activeTab.modules) {
@@ -119,10 +127,10 @@ export function renderDrawerContent(
         section.appendChild(createCodeEditor(module.id, module.config?.defaultCode || ''));
         break;
       case 'actions':
-        section.appendChild(createActionBar(module.config?.buttons || [], module.id));
+        section.appendChild(createActionBar(module.config?.buttons || [], module.id, contentScope));
         break;
       case 'log':
-        section.appendChild(createLogPanel());
+        section.appendChild(createLogPanel(contentScope));
         break;
       case 'init-config':
         section.appendChild(createInitConfigPanel());

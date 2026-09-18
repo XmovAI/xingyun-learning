@@ -3,13 +3,17 @@
 // ============================================
 
 import type { ActionButton, ActionContext } from '../types';
-import { store } from '../state/app-state';
+import { store, SubscriptionScope } from '../state/app-state';
 import { setEditorCode, getEditorCode } from './code-editor';
 import { executeCode } from '../core/code-executor';
 import { avatarManager } from '../core/avatar-manager';
 import { getCurrentAspectRatio } from './avatar-panel';
 
-export function createActionBar(buttons: ActionButton[], tabModuleId: string): HTMLElement {
+export function createActionBar(
+  buttons: ActionButton[],
+  tabModuleId: string,
+  scope?: SubscriptionScope
+): HTMLElement {
   const bar = document.createElement('div');
   bar.className = 'action-bar';
 
@@ -80,7 +84,8 @@ export function createActionBar(buttons: ActionButton[], tabModuleId: string): H
         el.style.cursor = hasAvatar ? '' : 'not-allowed';
       }
     };
-    store.subscribe(updateDisabled);
+    if (scope) scope.subscribe(updateDisabled);
+    else store.subscribe(updateDisabled);
     updateDisabled();
   }
 
